@@ -1,0 +1,2 @@
+# The app verifies every file here by exact SHA256; git must NOT alter any bytes (line endings).
+* -text
