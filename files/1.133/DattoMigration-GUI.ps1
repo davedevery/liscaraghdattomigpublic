@@ -98,6 +98,40 @@ $script:JobOpen = $false
 $script:Cfg = $null
 $script:Projects = @()
 $script:Map = @{}
+$script:Proc = $null
+$script:FinProc = $null
+$script:Sched = $null
+$script:SchedTimer = $null
+$script:QuietPausing = $false
+$script:StayAwakeOn = $false
+try {
+    Add-Type -Namespace Liscaragh -Name Win32 -MemberDefinition @'
+[System.Runtime.InteropServices.DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint esFlags);
+[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)] public struct FLASHWINFO { public uint cbSize; public System.IntPtr hwnd; public uint dwFlags; public uint uCount; public uint dwTimeout; }
+[System.Runtime.InteropServices.DllImport("user32.dll")] [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)] public static extern bool FlashWindowEx(ref FLASHWINFO pwfi);
+'@ -ErrorAction Stop
+} catch {}
+function Lz2f751c5673 {
+    try { [void][Liscaragh.Win32]::SetThreadExecutionState(0x80000000 -bor 0x00000001); $script:StayAwakeOn = $true } catch {}
+}
+function Lz37c47c4323 {
+    try { [void][Liscaragh.Win32]::SetThreadExecutionState(0x80000000); $script:StayAwakeOn = $false } catch {}
+}
+function Lz9622ee2b0d {
+    param([string]$Severity)
+    try { if ($Severity -eq 'ok') { [System.Media.SystemSounds]::Asterisk.Play() } else { [System.Media.SystemSounds]::Exclamation.Play() } } catch {}
+    try {
+        $h = (New-Object System.Windows.Interop.WindowInteropHelper($win)).Handle
+        if ($h -ne [System.IntPtr]::Zero) {
+            $fw = New-Object Liscaragh.Win32+FLASHWINFO
+            $fw.cbSize = [uint32][System.Runtime.InteropServices.Marshal]::SizeOf([type][Liscaragh.Win32+FLASHWINFO])
+            $fw.hwnd = $h
+            $fw.dwFlags = ([uint32]3 -bor [uint32]12)
+            $fw.uCount = [uint32]5; $fw.dwTimeout = [uint32]0
+            [void][Liscaragh.Win32]::FlashWindowEx([ref]$fw)
+        }
+    } catch {}
+}
 $script:SP = $null
 $script:Paused = $false
 $script:LastRunArgs = @()
@@ -126,7 +160,7 @@ $script:QuickStartSections = @(
 )
 $script:GraphReady = $false
 $script:SetResetNote = $null
-$script:AppVersion = '1.122'
+$script:AppVersion = '1.133'
 $script:WizAppName = 'Liscaragh Datto Workplace to SharePoint Migration Tool API'
 $script:WZ = $null
 $script:SC = $null
@@ -141,9 +175,9 @@ $script:ConsoleOwned  = $false
 $script:ConsoleHidden = $false
 $script:RegPath = 'HKCU:\Software\DattoMigration'
 function Get-RegSetting { param([string]$Name) try { return [string]((Get-ItemProperty -Path $script:RegPath -Name $Name -ErrorAction Stop).$Name) } catch { return $null } }
-function Lz72fd4a5484 { param([string]$Name,[string]$Value) if (-not (Test-Path $script:RegPath)) { New-Item -Path $script:RegPath -Force | Out-Null }; Set-ItemProperty -Path $script:RegPath -Name $Name -Value ([string]$Value) }
+function Lz555805c62d { param([string]$Name,[string]$Value) if (-not (Test-Path $script:RegPath)) { New-Item -Path $script:RegPath -Force | Out-Null }; Set-ItemProperty -Path $script:RegPath -Name $Name -Value ([string]$Value) }
 $script:SecretEntropy = [Text.Encoding]::UTF8.GetBytes('Liscaragh.DattoMigration.v1')
-function Lzcfd2823cf5 {
+function Lzdeefbf1eef {
     param([string]$Name, [string]$Value)
     try {
         Add-Type -AssemblyName System.Security -ErrorAction Stop | Out-Null
@@ -154,7 +188,7 @@ function Lzcfd2823cf5 {
         return $true
     } catch { return $false }
 }
-function Lz9bcc8b0521 {
+function Lz2c4c468a3a {
     param([string]$Name)
     try {
         Add-Type -AssemblyName System.Security -ErrorAction Stop | Out-Null
@@ -164,38 +198,38 @@ function Lz9bcc8b0521 {
         return [Text.Encoding]::UTF8.GetString($b)
     } catch { return $null }
 }
-function Lz26dbd273a2 {
+function Lzcc6218e58d {
     $s = $null
     try { $s = [Environment]::GetEnvironmentVariable('DATTO_CLIENT_SECRET') } catch {}
     if (-not $s) { try { $s = [Environment]::GetEnvironmentVariable('DATTO_CLIENT_SECRET','User') } catch {} }
     if (-not $s) { try { $s = [Environment]::GetEnvironmentVariable('DATTO_CLIENT_SECRET','Machine') } catch {} }
-    if (-not $s) { $s = Lz9bcc8b0521 'DATTO_CLIENT_SECRET' }
+    if (-not $s) { $s = Lz2c4c468a3a 'DATTO_CLIENT_SECRET' }
     return $s
 }
-function Lz3e570e3517 {
+function Lz1821ee2743 {
     param([string]$Value)
-    if (Lzcfd2823cf5 -Name 'DATTO_CLIENT_SECRET' -Value $Value) {
+    if (Lzdeefbf1eef -Name 'DATTO_CLIENT_SECRET' -Value $Value) {
         try { [Environment]::SetEnvironmentVariable('DATTO_CLIENT_SECRET', $null, 'User') } catch {}
     } else {
         [Environment]::SetEnvironmentVariable('DATTO_CLIENT_SECRET', $Value, 'User')
     }
     [Environment]::SetEnvironmentVariable('DATTO_CLIENT_SECRET', $Value, 'Process')
 }
-function Lz88058b863a {
+function Lz04f3f87c06 {
     try {
         $legacy = [Environment]::GetEnvironmentVariable('DATTO_CLIENT_SECRET','User')
         if ($legacy) {
-            if (Lzcfd2823cf5 -Name 'DATTO_CLIENT_SECRET' -Value $legacy) {
+            if (Lzdeefbf1eef -Name 'DATTO_CLIENT_SECRET' -Value $legacy) {
                 try { [Environment]::SetEnvironmentVariable('DATTO_CLIENT_SECRET', $null, 'User') } catch {}
             }
             [Environment]::SetEnvironmentVariable('DATTO_CLIENT_SECRET', $legacy, 'Process')
             return
         }
-        $enc = Lz9bcc8b0521 'DATTO_CLIENT_SECRET'
+        $enc = Lz2c4c468a3a 'DATTO_CLIENT_SECRET'
         if ($enc) { [Environment]::SetEnvironmentVariable('DATTO_CLIENT_SECRET', $enc, 'Process') }
     } catch {}
 }
-Lz88058b863a
+Lz04f3f87c06
 function Expand-ConfigTokens {
     param($Node)
     if ($null -eq $Node) { return }
@@ -273,7 +307,7 @@ function Get-DattoHeader {
 $script:GraphToken = $null
 $script:GraphTokenExp = [DateTimeOffset]::MinValue
 $script:LibCache = @{}
-function Lzb942e9f3c1 {
+function Lz0099e4fc5e {
     param([string]$TenantId,[string]$ClientId,[string]$Thumbprint,[string]$CertStore,[string]$LicencePath)
     $broker = Join-Path $PSScriptRoot 'LiscaraAuth.exe'
     if (-not (Test-Path $broker)) { throw 'Microsoft 365 sign-in is not available on this computer. Re-run the installer to repair the installation.' }
@@ -295,24 +329,24 @@ function Lzb942e9f3c1 {
     if ($code -eq 2) { throw "A valid licence is needed for this. $reason" }
     throw "Could not sign in to Microsoft 365. $reason"
 }
-function Lz46ba6ca8b5 {
+function Lz10d4cbcc21 {
     if ($script:GraphToken -and [DateTimeOffset]::UtcNow -lt $script:GraphTokenExp) { return $script:GraphToken }
-    $auth = Lzb942e9f3c1 -TenantId "$($script:Cfg.auth.tenantId)" -ClientId "$($script:Cfg.auth.clientId)" -Thumbprint "$($script:Cfg.auth.certThumbprint)" -CertStore "$($script:Cfg.auth.certStore)"
+    $auth = Lz0099e4fc5e -TenantId "$($script:Cfg.auth.tenantId)" -ClientId "$($script:Cfg.auth.clientId)" -Thumbprint "$($script:Cfg.auth.certThumbprint)" -CertStore "$($script:Cfg.auth.certStore)"
     $script:GraphToken = $auth.Token
     $script:GraphTokenExp = $auth.Exp
     return $script:GraphToken
 }
-function Lz205c5f2cd1 {
+function Lze1af180c81 {
     param([string]$Path)
-    $tok = Lz46ba6ca8b5
+    $tok = Lz10d4cbcc21
     return Invoke-RestMethod -Method GET -Uri "https://graph.microsoft.com/v1.0/$Path" -Headers @{ Authorization = "Bearer $tok" }
 }
-function Lzfc0353c021 {
+function Lz0d4d75071a {
     if ($script:GraphReady) { return }
-    [void](Lz46ba6ca8b5)
+    [void](Lz10d4cbcc21)
     $script:GraphReady = $true
 }
-function Lzef826c1c54 {
+function Lzc2f2259c45 {
     $sec = Resolve-Secret $script:Cfg.datto.clientSecret
     if (-not $sec) { throw "Datto secret not set: config references '$($script:Cfg.datto.clientSecret)' but that environment variable is empty. In plain terms: the Datto password has not been set up on this computer yet. Re-run the setup and paste it when asked, or ask your IT contact to set it, then click Connect again." }
     if (-not $script:Cfg.datto.endpointUrl) { throw "Datto endpoint URL is blank in this job's config. In plain terms: the tool does not know which Datto address to connect to. Set it in Settings (for example https://eu.workplace.datto.com/2/api/v1)." }
@@ -321,7 +355,7 @@ function Lzef826c1c54 {
     $items = if ($col -and ($r.PSObject.Properties.Name -contains $col)) { $r.$col } elseif ($r -is [array]) { $r } else { $r }
     return @($items | ForEach-Object { [pscustomobject]@{ Id = "$($_.id)"; Name = "$($_.name)" } })
 }
-function Lz8c92f98e87 {
+function Lz9f0ace37a7 {
     param([string]$ParentId)
     if (-not $script:Cfg.datto.endpointUrl) { throw "Datto endpoint URL is blank in this job's config." }
     $rel = "$($script:Cfg.datto.apiPaths.listChildren)" -replace '\{parentID\}', $ParentId
@@ -400,28 +434,28 @@ function Get-GuiShortSite {
     param([string]$Url)
     try { $u = [Uri]$Url; $p = "$($u.AbsolutePath)".Trim('/'); if ($p) { return $p } ; return $u.Host } catch { return $Url }
 }
-function Lzc351d9fc31 {
+function Lzd16deec314 {
     $src = "$($ctrl.TxtSourceSub.Text)".Trim().Trim('/').Trim('\')
     $box = "$($ctrl.TxtFolder.Text)".Trim().Trim('/').Trim('\')
     if ($ctrl.ChkSrcContents -and $ctrl.ChkSrcContents.IsChecked) { return $box }
-    return (Lzafae647b40 -TargetSubFolder $box -SourceSubPath $src)
+    return (Lzbcd14d1d94 -TargetSubFolder $box -SourceSubPath $src)
 }
-function Lz419b8789bb {
+function Lz97fc1b27bf {
     if ($script:NestSuspend) { return }
     try {
         $src = "$($ctrl.TxtSourceSub.Text)".Trim().Trim('/').Trim('\')
         $box = "$($ctrl.TxtFolder.Text)".Trim().Trim('/').Trim('\')
         if ($ctrl.ChkSrcContents -and $ctrl.ChkSrcContents.IsChecked) { return }
         if (-not $box -or -not $src) { return }
-        $norm = Lzafae647b40 -TargetSubFolder $box -SourceSubPath $src
+        $norm = Lzbcd14d1d94 -TargetSubFolder $box -SourceSubPath $src
         if ($norm -eq $box) { return }
         $ctrl.TxtFolder.Text = $norm
         $dropped = $box.Substring($norm.Length).Trim('/')
-        Lz20a2195fff "Removed '$dropped' from the folder box: the source folder you picked is already part of the path, so it would have landed twice."
-        Lze1a8c05da8
+        Lzcd3b6c7e2b "Removed '$dropped' from the folder box: the source folder you picked is already part of the path, so it would have landed twice."
+        Lz65290d66ad
     } catch { }
 }
-function Lzafae647b40 {
+function Lzbcd14d1d94 {
     param([string]$TargetSubFolder, [string]$SourceSubPath)
     $t = @((("$TargetSubFolder" -replace '\\', '/') -split '/') | Where-Object { $_ })
     $s = @((("$SourceSubPath"  -replace '\\', '/') -split '/') | Where-Object { $_ })
@@ -442,11 +476,11 @@ function Get-GuiLandingPath {
     if ($ContentsOnly) { return $target }
     return (Join-GuiSubPath $target ("$SourceSubPath".Trim().Trim('/').Trim('\')))
 }
-function Lz23c0db4e93 {
+function Lze230ec5f1c {
     param([string]$ProjectId, [string]$SubPath)
     $curId = "$ProjectId"; $curPath = ''
     foreach ($seg in @($SubPath -split '/' | Where-Object { $_ })) {
-        $kids = @(Lz8c92f98e87 -ParentId $curId)
+        $kids = @(Lz9f0ace37a7 -ParentId $curId)
         $hit = $kids | Where-Object { $_.Name -eq $seg } | Select-Object -First 1
         if (-not $hit) {
             $names = @($kids | ForEach-Object { $_.Name } | Sort-Object)
@@ -456,24 +490,24 @@ function Lz23c0db4e93 {
         }
         $curId = $hit.Id; $curPath = if ($curPath) { "$curPath/$seg" } else { $seg }
     }
-    return @{ SubfolderCount = @(Lz8c92f98e87 -ParentId $curId).Count }
+    return @{ SubfolderCount = @(Lz9f0ace37a7 -ParentId $curId).Count }
 }
 function ConvertTo-Slug { param([string]$n) return ($n -replace '[^\w\-]','-') -replace '-+','-' }
-function Lz2ba7dc3ca3 {
+function Lz703a1e2c86 {
     param([string]$Url)
     try {
         $u = [Uri]$Url
         $segs = @(($u.AbsolutePath.Trim('/') -split '/') | Where-Object { $_ })
         $sitePath = if ($segs.Count -ge 2) { "/$($segs[0])/$($segs[1])" } else { '' }
         $siteId = if ($sitePath) { "$($u.Host):$sitePath" } else { $u.Host }
-        return Lz205c5f2cd1 -Path "sites/$siteId"
+        return Lze1af180c81 -Path "sites/$siteId"
     } catch { return $null }
 }
-function Lz1a6a070027 {
+function Lzd8cc0af438 {
     param([string]$Search)
     $q = "$Search".Trim()
     if (-not $q) { $q = '*' }
-    $resp = Lz205c5f2cd1 -Path ("sites?search=" + [uri]::EscapeDataString($q))
+    $resp = Lze1af180c81 -Path ("sites?search=" + [uri]::EscapeDataString($q))
     if (-not $resp) { return @() }
     return @($resp.value | Where-Object { $_.webUrl } | ForEach-Object {
         [pscustomobject]@{
@@ -482,13 +516,13 @@ function Lz1a6a070027 {
         }
     } | Sort-Object Name)
 }
-function Lz05081bee56 {
+function Lz5471207b8b {
     param([string]$Url, [switch]$Refresh)
     $key = "$Url".TrimEnd('/')
     if (-not $Refresh -and $script:LibCache.ContainsKey($key)) { return $script:LibCache[$key] }
-    $site = Lz2ba7dc3ca3 -Url $Url
+    $site = Lz703a1e2c86 -Url $Url
     if (-not $site) { return $null }
-    $resp = Lz205c5f2cd1 -Path "sites/$($site.id)/drives"
+    $resp = Lze1af180c81 -Path "sites/$($site.id)/drives"
     $names = @($resp.value | ForEach-Object { $_.name })
     $script:LibCache[$key] = $names
     return $names
@@ -499,27 +533,27 @@ function Get-GuiPathSegment {
     $esc = (($RelPath -split '/' | Where-Object { $_ -ne '' } | ForEach-Object { [uri]::EscapeDataString($_) }) -join '/')
     return "root:/$($esc):"
 }
-function Lz841a3738f8 {
+function Lza1199a4178 {
     if ($ctrl.RbOneDrive.IsChecked) {
         $upn = "$($ctrl.TxtLoc.Text)".Trim()
         if (-not $upn) { throw "Enter the user's email / sign-in address first, then Browse." }
-        $d = Lz205c5f2cd1 -Path "users/$([uri]::EscapeDataString($upn))/drive"
+        $d = Lze1af180c81 -Path "users/$([uri]::EscapeDataString($upn))/drive"
         return @{ DriveId = "$($d.id)"; Label = "OneDrive of $upn" }
     }
     $site = "$($ctrl.TxtLoc.Text)".Trim()
     if (-not $site) { throw "Enter the SharePoint site URL first, then Browse." }
-    $s = Lz2ba7dc3ca3 -Url $site
+    $s = Lz703a1e2c86 -Url $site
     if (-not $s) { throw "That SharePoint site could not be found. Check the address (…/sites/Name)." }
-    $drives = @((Lz205c5f2cd1 -Path "sites/$($s.id)/drives").value)
+    $drives = @((Lze1af180c81 -Path "sites/$($s.id)/drives").value)
     $lib = "$($ctrl.TxtLib.Text)".Trim()
     $d = if ($lib) { $drives | Where-Object { "$($_.name)" -eq $lib } | Select-Object -First 1 } else { $drives | Select-Object -First 1 }
     if (-not $d) { throw "Library '$lib' was not found on that site. Click Browse beside the Library box to see the options." }
     return @{ DriveId = "$($d.id)"; Label = "$($d.name)" }
 }
-function Lz0cd5da6301 {
+function Lz7bb4262340 {
     param([string]$DriveId, [string]$RelPath)
     $url = "https://graph.microsoft.com/v1.0/drives/$DriveId/$(Get-GuiPathSegment $RelPath)/children?`$select=name,folder&`$top=200"
-    $tok = Lz46ba6ca8b5; $names = @()
+    $tok = Lz10d4cbcc21; $names = @()
     while ($url) {
         $resp = Invoke-RestMethod -Method GET -Uri $url -Headers @{ Authorization = "Bearer $tok" }
         $names += @($resp.value | Where-Object { $_.folder } | ForEach-Object { "$($_.name)" })
@@ -527,42 +561,42 @@ function Lz0cd5da6301 {
     }
     return $names
 }
-function Lz8ddcb956f4 {
+function Lza332920c0b {
     param([string]$DriveId, [string]$RelPath, [string]$Name)
     $url = "https://graph.microsoft.com/v1.0/drives/$DriveId/$(Get-GuiPathSegment $RelPath)/children"
-    $tok = Lz46ba6ca8b5
+    $tok = Lz10d4cbcc21
     $body = @{ name = $Name; folder = @{}; '@microsoft.graph.conflictBehavior' = 'fail' } | ConvertTo-Json
     Invoke-RestMethod -Method POST -Uri $url -Headers @{ Authorization = "Bearer $tok" } -ContentType 'application/json' -Body $body | Out-Null
 }
-function Lzc44d0856d0 {
+function Lz085e71e3c8 {
     $fp = $script:FP
     $fp.Lst.Items.Clear()
     $fp.Lbl.Text = if ($fp.Path) { "Current folder:  /$($fp.Path)" } else { "Current folder:  / (top level)" }
     try {
-        $folders = @(Lz0cd5da6301 -DriveId $fp.Drive -RelPath $fp.Path | Sort-Object)
+        $folders = @(Lz7bb4262340 -DriveId $fp.Drive -RelPath $fp.Path | Sort-Object)
         if ($folders.Count) { foreach ($f in $folders) { [void]$fp.Lst.Items.Add($f) } }
         else { [void]$fp.Lst.Items.Add('(no subfolders here)') }
     } catch { [void]$fp.Lst.Items.Add("(could not list folders: $($_.Exception.Message))") }
 }
-function Lz54282c3af3 {
+function Lz7197cdc83b {
     param([string]$Item)
     return ([bool]$Item) -and ($Item -notmatch '^\(')
 }
-function Lzc331710fb1 {
+function Lz348426f530 {
     param($State, [string]$Current)
     $sel = "$($State.Lst.SelectedItem)"
-    if (-not (Lz54282c3af3 -Item $sel)) { return $Current }
+    if (-not (Lz7197cdc83b -Item $sel)) { return $Current }
     if ($State.ContainsKey('Current') -and $State.Current -is [hashtable]) {
         if (-not $State.Current.ContainsKey($sel)) { return $Current }
     }
     if ($Current) { return "$Current/$sel" }
     return $sel
 }
-function Lz890a315c3d {
+function Lz5ca81e423e {
     param($State)
     if (-not $State.ContainsKey('Use') -or -not $State.Use) { return }
     $sel = "$($State.Lst.SelectedItem)"
-    $ok = Lz54282c3af3 -Item $sel
+    $ok = Lz7197cdc83b -Item $sel
     if ($ok -and $State.ContainsKey('Current') -and $State.Current -is [hashtable]) {
         $ok = $State.Current.ContainsKey($sel)
     }
@@ -571,7 +605,7 @@ function Lz890a315c3d {
     if ($disp.Length -gt 20) { $disp = $disp.Substring(0, 19).TrimEnd() + '...' }
     $State.Use.Content = "Choose '$disp'"
 }
-function Lzdde38e587d {
+function Lz46bee529f9 {
     param([string]$StartSearch)
     [xml]$sx = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -603,7 +637,7 @@ function Lzdde38e587d {
 </Window>
 "@
     $w = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $sx))
-    Lz7adedfce11 $w
+    Lzbc22fda021 $w
     $lst = $w.FindName('LstSites'); $txt = $w.FindName('TxtSearch')
     $go = $w.FindName('BtnGo'); $use = $w.FindName('BtnUse'); $cnt = $w.FindName('LblCount')
     $txt.Text = "$StartSearch"
@@ -613,7 +647,7 @@ function Lzdde38e587d {
         $s.Lst.Items.Clear()
         $s.Cnt.Text = 'Searching...'
         try {
-            $hits = @(Lz1a6a070027 -Search $s.Txt.Text)
+            $hits = @(Lzd8cc0af438 -Search $s.Txt.Text)
             foreach ($h in $hits) { [void]$s.Lst.Items.Add($h) }
             $s.Cnt.Text = if ($hits.Count) { "$($hits.Count) site(s) found" } else { 'No sites matched. Try fewer letters.' }
         } catch {
@@ -639,7 +673,7 @@ function Lzdde38e587d {
     [void]$w.ShowDialog()
     return $script:SP2.Result
 }
-function Lz69285fb468 {
+function Lz4c85d3deb7 {
     param([string]$SiteUrl, [string[]]$Libraries)
     [xml]$lx = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -666,7 +700,7 @@ function Lz69285fb468 {
 </Window>
 "@
     $w = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $lx))
-    Lz7adedfce11 $w
+    Lzbc22fda021 $w
     $lst = $w.FindName('LstLibs'); $use = $w.FindName('BtnUse'); $cnt = $w.FindName('LblCount')
     ($w.FindName('Sub')).Text = "$SiteUrl"
     foreach ($l in @($Libraries)) { [void]$lst.Items.Add("$l") }
@@ -683,7 +717,7 @@ function Lz69285fb468 {
     [void]$w.ShowDialog()
     return $script:LP.Result
 }
-function Lza81037c52c {
+function Lz2f3645411f {
     param([string[]]$Paths)
     $items = [System.Collections.Generic.List[object]]::new()
     $total = 0
@@ -747,7 +781,7 @@ function Lza81037c52c {
 </Window>
 "@
     $w = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $fx))
-    Lz7adedfce11 $w
+    Lzbc22fda021 $w
     $lst = $w.FindName('LstFiles'); $cnt = $w.FindName('LblCount'); $sub = $w.FindName('Sub')
     foreach ($it in $shown) { [void]$lst.Items.Add($it) }
     $nMiss = @($items | Where-Object Status -eq 'Missing at destination').Count
@@ -759,7 +793,7 @@ function Lza81037c52c {
     ($w.FindName('BtnOpenCsv')).Add_Click({ foreach ($p in $script:CF.Paths) { try { Start-Process $p } catch {} } })
     [void]$w.ShowDialog()
 }
-function Lzd0396845cb {
+function Lzdd8f1f6cf7 {
     param([string]$DriveId, [string]$Label, [string]$StartPath = '')
     [xml]$px = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -791,36 +825,36 @@ function Lzd0396845cb {
 </Window>
 "@
     $w = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $px))
-    Lz7adedfce11 $w
+    Lzbc22fda021 $w
     $lst = $w.FindName('LstFolders'); $lbl = $w.FindName('LblPath'); $sub = $w.FindName('Sub')
     $up = $w.FindName('BtnUp'); $new = $w.FindName('BtnNew'); $use = $w.FindName('BtnUse')
     $sub.Text = "In: $Label"
     $script:FP = @{ Drive = $DriveId; Path = ("$StartPath".Trim().Trim('/')); Result = $null; Win = $w; Lst = $lst; Lbl = $lbl }
-    Lzc44d0856d0
-    $up.Add_Click({ if ($script:FP.Path) { $script:FP.Path = ($script:FP.Path -replace '/?[^/]*$',''); Lzc44d0856d0 } })
-    $lst.Add_MouseDoubleClick({ $it = "$($script:FP.Lst.SelectedItem)"; if ($it -and ($it -notmatch '^\(')) { $script:FP.Path = if ($script:FP.Path) { "$($script:FP.Path)/$it" } else { $it }; Lzc44d0856d0 } })
+    Lz085e71e3c8
+    $up.Add_Click({ if ($script:FP.Path) { $script:FP.Path = ($script:FP.Path -replace '/?[^/]*$',''); Lz085e71e3c8 } })
+    $lst.Add_MouseDoubleClick({ $it = "$($script:FP.Lst.SelectedItem)"; if ($it -and ($it -notmatch '^\(')) { $script:FP.Path = if ($script:FP.Path) { "$($script:FP.Path)/$it" } else { $it }; Lz085e71e3c8 } })
     $new.Add_Click({
-        $n = Lz9bcf58401a -Prompt 'Name for the new folder:' -Title 'New folder'
-        if ($n) { $n = $n.Trim(); if ($n) { try { Lz8ddcb956f4 -DriveId $script:FP.Drive -RelPath $script:FP.Path -Name $n; Lzc44d0856d0; $script:FP.Lst.SelectedItem = $n } catch { (Show-Msg -Text ("Could not create the folder: $($_.Exception.Message)") -Caption ('New folder')) } } }
+        $n = Lz214ef6fecf -Prompt 'Name for the new folder:' -Title 'New folder'
+        if ($n) { $n = $n.Trim(); if ($n) { try { Lza332920c0b -DriveId $script:FP.Drive -RelPath $script:FP.Path -Name $n; Lz085e71e3c8; $script:FP.Lst.SelectedItem = $n } catch { (Show-Msg -Text ("Could not create the folder: $($_.Exception.Message)") -Caption ('New folder')) } } }
     })
     $script:FP.Use = $use
-    $lst.Add_SelectionChanged({ Lz890a315c3d -State $script:FP })
+    $lst.Add_SelectionChanged({ Lz5ca81e423e -State $script:FP })
     $use.Add_Click({
-        $script:FP.Result = Lzc331710fb1 -State $script:FP -Current $script:FP.Path
+        $script:FP.Result = Lz348426f530 -State $script:FP -Current $script:FP.Path
         $script:FP.Win.DialogResult = $true
     })
-    Lz890a315c3d -State $script:FP
+    Lz5ca81e423e -State $script:FP
     $r = $w.ShowDialog()
     if ($r -eq $true) { return $script:FP.Result } else { return $null }
 }
-function Lz6fc2745059 {
+function Lz3f8cc1510e {
     $sp = $script:SP
     $sp.Lst.Items.Clear()
     $node = $sp.Stack[$sp.Stack.Count - 1]
     $path = (@($sp.Stack | Select-Object -Skip 1 | ForEach-Object { $_.Name }) -join '/')
     $sp.Lbl.Text = if ($path) { "Current folder:  /$path" } else { "Current folder:  / (top of project)" }
     try {
-        $folders = @(Lz8c92f98e87 -ParentId $node.Id | Sort-Object Name)
+        $folders = @(Lz9f0ace37a7 -ParentId $node.Id | Sort-Object Name)
         $sp.Current = @{}
         foreach ($f in $folders) { $sp.Current["$($f.Name)"] = $f.Id }
         if (@(100,200,250,500,1000,2000,5000) -contains $folders.Count) {
@@ -830,7 +864,7 @@ function Lz6fc2745059 {
         else { [void]$sp.Lst.Items.Add('(no subfolders here)') }
     } catch { [void]$sp.Lst.Items.Add("(could not list folders: $($_.Exception.Message))") }
 }
-function Lz189ab697d5 {
+function Lz7320c8f294 {
     param([string]$ProjectId, [string]$ProjectName)
     [xml]$px = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -867,23 +901,23 @@ function Lz189ab697d5 {
 </Window>
 "@
     $w = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $px))
-    Lz7adedfce11 $w
+    Lzbc22fda021 $w
     $lst = $w.FindName('LstFolders'); $lbl = $w.FindName('LblPath'); $sub = $w.FindName('Sub')
     $up = $w.FindName('BtnUp'); $use = $w.FindName('BtnUse')
     $sub.Text = "In: $ProjectName"
     $script:SP = @{ Result = $null; Win = $w; Lst = $lst; Lbl = $lbl; Current = @{}; Stack = (New-Object System.Collections.Generic.List[object]) }
     [void]$script:SP.Stack.Add(@{ Id = "$ProjectId"; Name = '' })
-    Lz6fc2745059
-    $up.Add_Click({ if ($script:SP.Stack.Count -gt 1) { $script:SP.Stack.RemoveAt($script:SP.Stack.Count - 1); Lz6fc2745059 } })
-    $lst.Add_MouseDoubleClick({ $it = "$($script:SP.Lst.SelectedItem)"; if ($it -and ($it -notmatch '^\(') -and $script:SP.Current.ContainsKey($it)) { [void]$script:SP.Stack.Add(@{ Id = $script:SP.Current[$it]; Name = $it }); Lz6fc2745059 } })
+    Lz3f8cc1510e
+    $up.Add_Click({ if ($script:SP.Stack.Count -gt 1) { $script:SP.Stack.RemoveAt($script:SP.Stack.Count - 1); Lz3f8cc1510e } })
+    $lst.Add_MouseDoubleClick({ $it = "$($script:SP.Lst.SelectedItem)"; if ($it -and ($it -notmatch '^\(') -and $script:SP.Current.ContainsKey($it)) { [void]$script:SP.Stack.Add(@{ Id = $script:SP.Current[$it]; Name = $it }); Lz3f8cc1510e } })
     $script:SP.Use = $use
-    $lst.Add_SelectionChanged({ Lz890a315c3d -State $script:SP })
+    $lst.Add_SelectionChanged({ Lz5ca81e423e -State $script:SP })
     $use.Add_Click({
         $cur = (@($script:SP.Stack | Select-Object -Skip 1 | ForEach-Object { $_.Name }) -join '/')
-        $script:SP.Result = Lzc331710fb1 -State $script:SP -Current $cur
+        $script:SP.Result = Lz348426f530 -State $script:SP -Current $cur
         $script:SP.Win.DialogResult = $true
     })
-    Lz890a315c3d -State $script:SP
+    Lz5ca81e423e -State $script:SP
     $r = $w.ShowDialog()
     if ($r -eq $true) { return $script:SP.Result } else { return $null }
 }
@@ -1307,7 +1341,7 @@ xOc7em58dFWDZkdcEgGydiS3vtEXTwFl8usFBUhQvbqlt6uj23YSiKIjybe6+7emtIu2iCcb2CCU2cgj
 cMtTb9nOMDCDDA5j38bhtIuABJpN/9rU/lqbcH7y6GsLprU77qCNFjt9ybo6uy7G/UlTG6ujP37zY6sibtLCrIWNCAamMzWWdsfhgXdmTcruWdcbF0BT
 b15AG63gbTmp7P8D8Ix8J5xRk04AAAAASUVORK5CYII=
 '@ -replace '\s', ''
-function Lzf84779ecdb {
+function Lz6d4ba804d6 {
     param($Image)
     if (-not $Image) { return }
     try {
@@ -1320,7 +1354,7 @@ function Lzf84779ecdb {
         Write-Verbose "Brand logo could not be decoded: $($_.Exception.Message)"
     }
 }
-function Lz7adedfce11 {
+function Lzbc22fda021 {
     param($Window)
     if (-not $Window) { return }
     try {
@@ -1747,6 +1781,16 @@ function Lz7adedfce11 {
                     <StackPanel><TextBlock x:Name="BtnPauseTitle" Style="{StaticResource TileTitle}" Text="Pause"/><TextBlock x:Name="BtnPauseDesc" Style="{StaticResource TileDesc}" Text="Available once files start moving."/></StackPanel>
                   </Button>
                 </UniformGrid>
+                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                  <Button x:Name="BtnSchedule" Padding="12,5" Background="#EFF4FA" BorderBrush="#B9D0E8" BorderThickness="1"
+                          ToolTip="Start the migration at a time you choose (for example tonight), and optionally only run during a nightly window so it does not compete with the office internet during the day. The app must stay open for the schedule to run.">
+                    <TextBlock Text="Schedule for later / overnight..." Foreground="#2F5D8C" FontWeight="SemiBold"/>
+                  </Button>
+                  <Button x:Name="BtnRerunFailed" Margin="8,0,0,0" Padding="12,5" Background="#FFFAEB" BorderBrush="#FEC84B" BorderThickness="1" IsEnabled="False" ToolTipService.ShowOnDisabled="True"
+                          ToolTip="Re-copy only the files that failed in the last run (taken from its record), leaving everything that already succeeded exactly as it is. Becomes available after a run that reported problems.">
+                    <TextBlock Text="Rerun failed files only" Foreground="#B54708" FontWeight="SemiBold"/>
+                  </Button>
+                </StackPanel>
 
               </StackPanel>
             </ScrollViewer>
@@ -1873,6 +1917,9 @@ function Lz7adedfce11 {
                 <Button x:Name="BtnOpenReport" Style="{StaticResource Tile}" ToolTip="Pick from the HTML reports for this job. One is built automatically after each upload and sync.">
                   <StackPanel><TextBlock Style="{StaticResource TileTitle}" Text="Open report"/><TextBlock Style="{StaticResource TileDesc}" Text="Pick a run report to view (labelled by what and when)."/></StackPanel>
                 </Button>
+                <Button x:Name="BtnCertificate" Style="{StaticResource Tile}" ToolTip="Produce a one-page completion certificate for client sign-off from the most recent completed migration. Only issues once a migration has finished (upload, sync until nothing is left, then verify).">
+                  <StackPanel><TextBlock Style="{StaticResource TileTitle}" Text="Completion certificate"/><TextBlock Style="{StaticResource TileDesc}" Text="One-page sign-off for the client. Opens when it is ready."/></StackPanel>
+                </Button>
                 <Button x:Name="BtnOpenAudit" Style="{StaticResource Tile}" ToolTip="Pick from the run logs for this job (upload, sync, verify and so on).">
                   <StackPanel><TextBlock Style="{StaticResource TileTitle}" Text="Open log"/><TextBlock Style="{StaticResource TileDesc}" Text="Pick a run log to view (labelled by what and when)."/></StackPanel>
                 </Button>
@@ -1970,25 +2017,25 @@ function Lz7adedfce11 {
 "@
 $reader = New-Object System.Xml.XmlNodeReader $xaml
 $win = [Windows.Markup.XamlReader]::Load($reader)
-Lz7adedfce11 $win
+Lzbc22fda021 $win
 $ctrl = @{}
-foreach ($n in 'LblJob','MnuJobNew','MnuJobOpen','MnuJobRecent','MnuJobSave','MnuJobSaveAs','MnuJobRename','MnuJobOpenFolder','MnuJobClose','MnuJobDelete','MnuJobExit','MnuSettingsChecklist','MnuSettingsApi','MnuSettingsWizard','MnuSettingsEmail','MnuSettingsTuning','MnuSettingsDecommission','MnuHelpHowto','MnuHelpCheck','MnuHelpUpdate','MnuHelpSupport','MnuHelpLicence','MnuHelpLicInstall','MnuHelpAbout','MnuHelpVersion','BtnConnect','LblConn','LblNet','NetCanvas','NetLine','TxtFilter','TxtFilterHint','GettingStarted','ImgLogo','LblQuickStart','RowProjects','RowRun','LstProjects','LblProject','TxtSourceSub','ChkSrcContents','BtnBrowseSource','BtnTestSource','LblSourceCheck','RbSite','RbOneDrive','RbSkip','LblLoc','TxtLoc','BtnFindSite','RowLib','TxtLib','BtnPickLib','TxtFolder','BtnBrowseFolder','ChkNest','SourcePathBox','LblSourcePath','DestPathBox','LblDestPath','LblDestWarn','BtnApply','BtnApplySel','BtnApplyAll','BtnCheck','LblCheck','RunSummaryBanner','LblRunSummary','BtnShowFiles','BtnPreflight','BtnDryRun','BtnTransfer','BtnDelta','BtnStop','BtnPause','BtnPauseTitle','BtnPauseDesc','BtnValidate','BtnSizeCheck','BtnOpenReport','BtnOpenAudit','Prog','LblStatus','LblElapsed','LblEta','LblHint','LblCurrent','LblSpeed','IssuesChip','LblIssues','TxtLog','ThrottleBanner','LblThrottle','TxtCapUp','TxtCapDown','BtnApplyCap') {
+foreach ($n in 'LblJob','MnuJobNew','MnuJobOpen','MnuJobRecent','MnuJobSave','MnuJobSaveAs','MnuJobRename','MnuJobOpenFolder','MnuJobClose','MnuJobDelete','MnuJobExit','MnuSettingsChecklist','MnuSettingsApi','MnuSettingsWizard','MnuSettingsEmail','MnuSettingsTuning','MnuSettingsDecommission','MnuHelpHowto','MnuHelpCheck','MnuHelpUpdate','MnuHelpSupport','MnuHelpLicence','MnuHelpLicInstall','MnuHelpAbout','MnuHelpVersion','BtnConnect','LblConn','LblNet','NetCanvas','NetLine','TxtFilter','TxtFilterHint','GettingStarted','ImgLogo','LblQuickStart','RowProjects','RowRun','LstProjects','LblProject','TxtSourceSub','ChkSrcContents','BtnBrowseSource','BtnTestSource','LblSourceCheck','RbSite','RbOneDrive','RbSkip','LblLoc','TxtLoc','BtnFindSite','RowLib','TxtLib','BtnPickLib','TxtFolder','BtnBrowseFolder','ChkNest','SourcePathBox','LblSourcePath','DestPathBox','LblDestPath','LblDestWarn','BtnApply','BtnApplySel','BtnApplyAll','BtnCheck','LblCheck','RunSummaryBanner','LblRunSummary','BtnShowFiles','BtnPreflight','BtnDryRun','BtnTransfer','BtnDelta','BtnSchedule','BtnRerunFailed','BtnStop','BtnPause','BtnPauseTitle','BtnPauseDesc','BtnValidate','BtnSizeCheck','BtnOpenReport','BtnCertificate','BtnOpenAudit','Prog','LblStatus','LblElapsed','LblEta','LblHint','LblCurrent','LblSpeed','IssuesChip','LblIssues','TxtLog','ThrottleBanner','LblThrottle','TxtCapUp','TxtCapDown','BtnApplyCap') {
     $ctrl[$n] = $win.FindName($n)
 }
-Lzf84779ecdb $ctrl.ImgLogo
+Lz6d4ba804d6 $ctrl.ImgLogo
 if ($ctrl.LblQuickStart) {
     $qs = $script:QuickStartSections
     $ctrl.LblQuickStart.Text = "$($qs[0].H): $($qs[0].B)`n`n$($qs[1].B)"
 }
 if ($ctrl.MnuHelpVersion) { $ctrl.MnuHelpVersion.Header = "Version $($script:AppVersion)  -  Liscaragh Software" }
-foreach ($bn in @('BtnConnect','RbSite','RbOneDrive','RbSkip','TxtLoc','BtnFindSite','TxtSourceSub','ChkSrcContents','BtnBrowseSource','BtnTestSource','TxtLib','BtnPickLib','TxtFolder','BtnBrowseFolder','BtnApply','BtnApplySel','BtnApplyAll','BtnCheck','BtnPreflight','BtnDryRun','BtnTransfer','BtnDelta','BtnStop','BtnPause','BtnValidate','BtnSizeCheck','BtnOpenReport','BtnOpenAudit')) {
+foreach ($bn in @('BtnConnect','RbSite','RbOneDrive','RbSkip','TxtLoc','BtnFindSite','TxtSourceSub','ChkSrcContents','BtnBrowseSource','BtnTestSource','TxtLib','BtnPickLib','TxtFolder','BtnBrowseFolder','BtnApply','BtnApplySel','BtnApplyAll','BtnCheck','BtnPreflight','BtnDryRun','BtnTransfer','BtnDelta','BtnStop','BtnPause','BtnValidate','BtnSizeCheck','BtnOpenReport','BtnCertificate','BtnOpenAudit')) {
     $b = $ctrl[$bn]
     if ($b) {
         $b.Add_MouseEnter({ param($s,$e) try { $ctrl.LblHint.Text = "$($s.ToolTip)" } catch {} })
         $b.Add_MouseLeave({ $ctrl.LblHint.Text = '' })
     }
 }
-function Lz20a2195fff { param([string]$Text) $ctrl.LblStatus.Text = $Text }
+function Lzcd3b6c7e2b { param([string]$Text) $ctrl.LblStatus.Text = $Text }
 function ConvertTo-FriendlyDuration {
     param([string]$Text)
     $ts = [TimeSpan]::Zero
@@ -1997,7 +2044,7 @@ function ConvertTo-FriendlyDuration {
     if ($ts.TotalMinutes -ge 1) { return ('{0}m {1:00}s' -f $ts.Minutes, $ts.Seconds) }
     return ('{0}s' -f [int]$ts.Seconds)
 }
-function Lz994b068406 { param([TimeSpan]$ts)
+function Format-Span { param([TimeSpan]$ts)
     if ($ts.TotalHours -ge 1) { return ('{0}h {1:D2}m' -f [int]$ts.TotalHours, $ts.Minutes) }
     return ('{0}m {1:D2}s' -f [int]$ts.TotalMinutes, $ts.Seconds)
 }
@@ -2008,7 +2055,7 @@ function Format-Bytes { param([int64]$b)
     if ($b -ge 1KB) { return ('{0:N0} KB' -f ($b/1KB)) }
     return "$b B"
 }
-function Lzf46b4d488e {
+function Lzfac3708c8b {
     param([int]$Max,[int]$HardMax,[int]$PausedSeconds,[int]$Code=0)
     if ($Max -ge $HardMax -and $PausedSeconds -le 0) {
         $script:ThrM365 = ''
@@ -2024,9 +2071,9 @@ function Lzf46b4d488e {
             "Microsoft 365 is throttling$codeTxt. Easing off to $Max of $HardMax uploaders to stay within limits. Speed recovers automatically."
         }
     }
-    Lzd74993adeb
+    Lz2cc4332461
 }
-function Lz9a18f94d3d {
+function Lzf51cc8d3ad {
     param([int]$GapMs,[int]$Code=0)
     $codeTxt = switch ($Code) {
         429 { ' (HTTP 429: too many requests too fast)' }
@@ -2035,15 +2082,15 @@ function Lz9a18f94d3d {
     }
     $gapTxt = if ($GapMs -gt 0) { " Now reading at about $GapMs ms between requests." } else { '' }
     $script:ThrDatto = "Datto is limiting how fast we can read$codeTxt. Learning the fastest rate your Datto account allows and adjusting to it.$gapTxt Normal on large projects, not an error: it settles after the first few."
-    Lzd74993adeb
+    Lz2cc4332461
 }
-function Lzd74993adeb {
+function Lz2cc4332461 {
     $parts = @($script:ThrDatto, $script:ThrM365) | Where-Object { $_ }
     if (-not $parts.Count) { $ctrl.ThrottleBanner.Visibility = 'Collapsed'; return }
     $ctrl.LblThrottle.Text = ($parts -join '   ')
     $ctrl.ThrottleBanner.Visibility = 'Visible'
 }
-function Lz63fb61d20f { param([double]$sec)
+function Lzb3ff592280 { param([double]$sec)
     if ($sec -lt 0) { $sec = 0 }
     $ts = [TimeSpan]::FromSeconds([double]$sec)
     if ($ts.TotalDays    -ge 1) { return ('{0}d {1}h'   -f [int]$ts.TotalDays,  $ts.Hours) }
@@ -2051,7 +2098,7 @@ function Lz63fb61d20f { param([double]$sec)
     if ($ts.TotalMinutes -ge 1) { return ('{0}m'         -f [int]$ts.TotalMinutes) }
     return ('{0}s' -f [int]$ts.TotalSeconds)
 }
-function Lz02dc7cbdf5 {
+function Lz7ab214538c {
     param([double]$SmallRate,[double]$SmallRemaining,[double]$LargeRate,[double]$LargeBytesRemaining,
           [double]$BytesRate,[double]$BytesRemaining)
     if ($SmallRemaining -gt 0 -or $LargeBytesRemaining -gt 0) {
@@ -2064,7 +2111,7 @@ function Lz02dc7cbdf5 {
     if ($BytesRate -gt 0) { return $BytesRemaining / $BytesRate }
     return -1
 }
-function Lz48ad27d33d {
+function Lzcc5bd5ccc4 {
     param($Samples,[int]$SmallDone,[int]$SmallTotal,[int64]$LargeDone,[int64]$LargeTotal,
           [int64]$BytesDone,[int64]$BytesTotal,[int]$Final)
     if ($null -eq $Samples -or $Samples.Count -lt 2) { return $null }
@@ -2086,11 +2133,11 @@ function Lz48ad27d33d {
     $largeRem = [math]::Max([double]($LargeTotal - $LargeDone), 0.0)
     $bytesRem = [math]::Max([double]($BytesTotal - $BytesDone), 0.0)
     if ($hasRegime) {
-        $etaA = Lz02dc7cbdf5 -SmallRate $smallRateFull   -SmallRemaining $smallRem -LargeRate $largeRateFull   -LargeBytesRemaining $largeRem -BytesRate $bytesRateFull   -BytesRemaining $bytesRem
-        $etaB = Lz02dc7cbdf5 -SmallRate $smallRateRecent -SmallRemaining $smallRem -LargeRate $largeRateRecent -LargeBytesRemaining $largeRem -BytesRate $bytesRateRecent -BytesRemaining $bytesRem
+        $etaA = Lz7ab214538c -SmallRate $smallRateFull   -SmallRemaining $smallRem -LargeRate $largeRateFull   -LargeBytesRemaining $largeRem -BytesRate $bytesRateFull   -BytesRemaining $bytesRem
+        $etaB = Lz7ab214538c -SmallRate $smallRateRecent -SmallRemaining $smallRem -LargeRate $largeRateRecent -LargeBytesRemaining $largeRem -BytesRate $bytesRateRecent -BytesRemaining $bytesRem
     } else {
-        $etaA = Lz02dc7cbdf5 -SmallRate 0 -SmallRemaining 0 -LargeRate 0 -LargeBytesRemaining 0 -BytesRate $bytesRateFull   -BytesRemaining $bytesRem
-        $etaB = Lz02dc7cbdf5 -SmallRate 0 -SmallRemaining 0 -LargeRate 0 -LargeBytesRemaining 0 -BytesRate $bytesRateRecent -BytesRemaining $bytesRem
+        $etaA = Lz7ab214538c -SmallRate 0 -SmallRemaining 0 -LargeRate 0 -LargeBytesRemaining 0 -BytesRate $bytesRateFull   -BytesRemaining $bytesRem
+        $etaB = Lz7ab214538c -SmallRate 0 -SmallRemaining 0 -LargeRate 0 -LargeBytesRemaining 0 -BytesRate $bytesRateRecent -BytesRemaining $bytesRem
     }
     $cands = @($etaA,$etaB) | Where-Object { $_ -ge 0 }
     if ($cands.Count -lt 1) { return 'Waiting on rate limits...' }
@@ -2098,11 +2145,11 @@ function Lz48ad27d33d {
     $hi = ($cands | Measure-Object -Maximum).Maximum
     if (($hi/86400.0) -gt 30) { return 'Estimating time left (settling)...' }
     $prov = if ($Final -eq 1) { '' } else { ' so far' }
-    $loT = Lz63fb61d20f $lo; $hiT = Lz63fb61d20f $hi
+    $loT = Lzb3ff592280 $lo; $hiT = Lzb3ff592280 $hi
     if ($loT -eq $hiT) { return "About $hiT left$prov" }
     return "About $loT to $hiT left$prov"
 }
-function Lzb12fa82684 {
+function Lzadd210de90 {
     param([int]$Done,[int]$Total,[int64]$BytesDone,[int64]$BytesTotal,
           [int]$SmallDone,[int]$SmallTotal,[int64]$LargeDone,[int64]$LargeTotal,[int]$Final,[string]$CurrentName)
     try {
@@ -2123,7 +2170,7 @@ function Lzb12fa82684 {
         if ($null -eq $script:EtaSamples) { $script:EtaSamples = New-Object System.Collections.ArrayList }
         [void]$script:EtaSamples.Add([pscustomobject]@{ T=$now; Bytes=$BytesDone; Small=$SmallDone; Large=$LargeDone })
         while ($script:EtaSamples.Count -gt 2 -and ($now - $script:EtaSamples[0].T).TotalSeconds -gt 300) { $script:EtaSamples.RemoveAt(0) }
-        $etaText = Lz48ad27d33d -Samples $script:EtaSamples -SmallDone $SmallDone -SmallTotal $SmallTotal -LargeDone $LargeDone -LargeTotal $LargeTotal -BytesDone $BytesDone -BytesTotal $BytesTotal -Final $Final
+        $etaText = Lzcc5bd5ccc4 -Samples $script:EtaSamples -SmallDone $SmallDone -SmallTotal $SmallTotal -LargeDone $LargeDone -LargeTotal $LargeTotal -BytesDone $BytesDone -BytesTotal $BytesTotal -Final $Final
         if ($etaText) { $ctrl.LblEta.Text = $etaText; try { $ctrl.LblHint.Text = 'Estimate improves as it runs; pace is set by the Datto limit.' } catch {} }
         elseif (-not $script:EtaShownOnce) { $ctrl.LblEta.Text = 'Estimating time left...' }
         if ($etaText) { $script:EtaShownOnce = $true }
@@ -2138,7 +2185,7 @@ function Lzb12fa82684 {
         } else { $script:ProgLastBytes = $BytesDone; $script:ProgLastTime = $now }
     } catch {}
 }
-function Lzc164eb2021 {
+function Lz37b8b56fb4 {
     param([string]$Line)
     if ($null -eq $Line) { return }
     if ($Line -match '^##STATUS##\|(.*)$') {
@@ -2186,36 +2233,36 @@ function Lzc164eb2021 {
         return
     }
     if ($Line -match '^##DATTOPACE##\|(-?\d+)\|(\d+)\|(\d+)$') {
-        Lz9a18f94d3d -GapMs ([int]$Matches[2]) -Code ([int]$Matches[3])
+        Lzf51cc8d3ad -GapMs ([int]$Matches[2]) -Code ([int]$Matches[3])
         return
     }
     if ($Line -match '^##THROTTLE##\|(-?\d+)\|(\d+)\|(-?\d+)\|(\d+)(?:\|(\d+))?$') {
         $code = if ($Matches[5]) { [int]$Matches[5] } else { 0 }
-        Lzf46b4d488e -Max ([int]$Matches[1]) -HardMax ([int]$Matches[2]) -PausedSeconds ([int]$Matches[3]) -Code $code
+        Lzfac3708c8b -Max ([int]$Matches[1]) -HardMax ([int]$Matches[2]) -PausedSeconds ([int]$Matches[3]) -Code $code
         return
     }
     if ($Line -match '^##PROGRESS##\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|([01])\|(.*)$') {
-        Lzb12fa82684 -Done ([int]$Matches[1]) -Total ([int]$Matches[2]) -BytesDone ([int64]$Matches[3]) -BytesTotal ([int64]$Matches[4]) `
+        Lzadd210de90 -Done ([int]$Matches[1]) -Total ([int]$Matches[2]) -BytesDone ([int64]$Matches[3]) -BytesTotal ([int64]$Matches[4]) `
             -SmallDone ([int]$Matches[5]) -SmallTotal ([int]$Matches[6]) -LargeDone ([int64]$Matches[7]) -LargeTotal ([int64]$Matches[8]) `
             -Final ([int]$Matches[9]) -CurrentName ("$($Matches[10])".Trim())
         return
     }
     if ($Line -match '^##PROGRESS##\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(.*)$') {
-        Lzb12fa82684 -Done ([int]$Matches[1]) -Total ([int]$Matches[2]) -BytesDone ([int64]$Matches[3]) -BytesTotal ([int64]$Matches[4]) `
+        Lzadd210de90 -Done ([int]$Matches[1]) -Total ([int]$Matches[2]) -BytesDone ([int64]$Matches[3]) -BytesTotal ([int64]$Matches[4]) `
             -SmallDone 0 -SmallTotal 0 -LargeDone 0 -LargeTotal 0 -Final 1 -CurrentName ("$($Matches[5])".Trim())
         return
     }
-    if ($Line -match 'source \[(.+?)\] -> destination') { Lz8e617bf9c8 $Matches[1] 'In progress' }
+    if ($Line -match 'source \[(.+?)\] -> destination') { Lz0d759ce2d1 $Matches[1] 'In progress' }
     if ($Line -match '\]\s+(.+?): copied \d+, skipped \d+, failed (\d+), verifyFail (\d+)') {
         $st = if ((([int]$Matches[2]) + ([int]$Matches[3])) -gt 0) { 'Errors' } else { 'Completed' }
-        Lz8e617bf9c8 $Matches[1].Trim() $st
+        Lz0d759ce2d1 $Matches[1].Trim() $st
     }
     if ($Line -match 'UPLOAD FAILED|DOWNLOAD FAILED|VERIFY FAILED|SKIPPED \(too large') {
         if ($null -eq $script:RunIssues) { $script:RunIssues = 0 }
         $script:RunIssues++
         try { $ctrl.LblIssues.Text = "$($script:RunIssues) file(s) had a problem - see the report"; $ctrl.IssuesChip.Visibility = 'Visible' } catch {}
     }
-    $ctrl.TxtLog.AppendText((Lzd7846a72e0 $Line) + "`r`n")
+    $ctrl.TxtLog.AppendText((Lzda5a281aab $Line) + "`r`n")
     if ($null -eq $script:LogLines) { $script:LogLines = 0 }
     $script:LogLines++
     if ($script:LogLines -ge 8000) {
@@ -2227,26 +2274,26 @@ function Lzc164eb2021 {
     }
     $ctrl.TxtLog.ScrollToEnd()
 }
-function Lzd7846a72e0 {
+function Lzda5a281aab {
     param([string]$Line)
     if ($Line -match '^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[+-]\d{2}:\d{2}|Z)?)\s+(.*)$') {
         try { $dt = [datetimeoffset]::Parse($Matches[1]); return ($dt.DateTime.ToString('dd MMM HH:mm:ss') + '  ' + $Matches[2]) } catch { return $Line }
     }
     return $Line
 }
-function Lz0fe653215a { param([string]$Text) Lzc164eb2021 $Text }
-function Lzb9134b24cf {
+function Lzf4e4fbe7d0 { param([string]$Text) Lz37b8b56fb4 $Text }
+function Lz050ce2a5ca {
     if (-not $script:Cfg) { return '' }
     $u = $script:Cfg.destination.defaultSiteUrl
     if ($u) { return "$u".TrimEnd('/') }
     return "$($script:Cfg.destination.teamSiteBaseUrl.TrimEnd('/'))/projects"
 }
-function Lz2d30bf84d9 {
+function Lze1e38042b5 {
     if (-not $script:Cfg) { return '' }
     $d = $script:Cfg.destination.oneDriveUpnDomain
     if ($d) { return "$d" } else { return '' }
 }
-function Lz6546fb5ff5 {
+function Lza7d5101dea {
     param([bool]$On, [string]$Text)
     if ($On) {
         if ($Text) { $ctrl.LblStatus.Text = $Text }
@@ -2274,65 +2321,65 @@ function Set-DestModeUI {
 if ($ctrl.BtnFindSite) { $ctrl.BtnFindSite.Add_Click({
     if (-not $script:JobOpen) { (Show-Msg -Text ('Open or create a migration job first.') -Caption ('Find site')); return }
     try {
-        Lz6546fb5ff5 $true 'Connecting to Microsoft 365...'
-        Lzfc0353c021
+        Lza7d5101dea $true 'Connecting to Microsoft 365...'
+        Lz0d4d75071a
     } catch {
         (Show-Msg -Text ("Could not sign in to Microsoft 365, so the sites cannot be listed.`n`nTechnical detail: $($_.Exception.Message)") -Caption ('Find site'))
-        Lz6546fb5ff5 $false; return
-    } finally { Lz6546fb5ff5 $false }
+        Lza7d5101dea $false; return
+    } finally { Lza7d5101dea $false }
     $seed = "$($ctrl.TxtLoc.Text)".Trim()
     if ($seed -match '://') { $seed = '' }
-    $picked = Lzdde38e587d -StartSearch $seed
+    $picked = Lz46bee529f9 -StartSearch $seed
     if ($picked) {
         $ctrl.TxtLoc.Text = $picked
         $ctrl.TxtLib.Text = ''; $ctrl.TxtFolder.Text = ''
         $ctrl.LblCheck.Text = "Site set. Click Browse beside Library to pick one."
         $ctrl.LblCheck.Foreground = 'Green'
-        Lz20a2195fff "Site set to $picked"
-        Lze1a8c05da8
+        Lzcd3b6c7e2b "Site set to $picked"
+        Lz65290d66ad
     }
 }) }
 $ctrl.RbSite.Add_Checked({
     Set-DestModeUI
-    if ($script:Cfg -and ($ctrl.TxtLoc.Text -notmatch '://')) { $ctrl.TxtLoc.Text = Lzb9134b24cf }
-    Lze1a8c05da8
+    if ($script:Cfg -and ($ctrl.TxtLoc.Text -notmatch '://')) { $ctrl.TxtLoc.Text = Lz050ce2a5ca }
+    Lz65290d66ad
 })
 $ctrl.RbOneDrive.Add_Checked({
     Set-DestModeUI
-    if ($script:Cfg -and (($ctrl.TxtLoc.Text -match '://') -or (-not $ctrl.TxtLoc.Text.Trim()))) { $ctrl.TxtLoc.Text = Lz2d30bf84d9 }
-    Lze1a8c05da8
+    if ($script:Cfg -and (($ctrl.TxtLoc.Text -match '://') -or (-not $ctrl.TxtLoc.Text.Trim()))) { $ctrl.TxtLoc.Text = Lze1e38042b5 }
+    Lz65290d66ad
 })
-$ctrl.RbSkip.Add_Checked({ Set-DestModeUI; Lze1a8c05da8 })
-$ctrl.TxtFolder.Add_TextChanged({ Lze1a8c05da8 })
-$ctrl.TxtSourceSub.Add_TextChanged({ Lze1a8c05da8 })
-if ($ctrl.ChkSrcContents) { $ctrl.ChkSrcContents.Add_Checked({ Lze1a8c05da8 }); $ctrl.ChkSrcContents.Add_Unchecked({ Lze1a8c05da8 }) }
-if ($ctrl.BtnShowFiles) { $ctrl.BtnShowFiles.Add_Click({ Lza81037c52c -Paths @(@($script:CheckFiles) | ForEach-Object { "$($_.Path)" }) }) }
-$ctrl.TxtFolder.Add_LostFocus({ Lz419b8789bb })
-$ctrl.TxtSourceSub.Add_LostFocus({ Lz419b8789bb })
-$ctrl.TxtLoc.Add_TextChanged({ Lze1a8c05da8 })
-$ctrl.TxtLib.Add_TextChanged({ Lze1a8c05da8 })
+$ctrl.RbSkip.Add_Checked({ Set-DestModeUI; Lz65290d66ad })
+$ctrl.TxtFolder.Add_TextChanged({ Lz65290d66ad })
+$ctrl.TxtSourceSub.Add_TextChanged({ Lz65290d66ad })
+if ($ctrl.ChkSrcContents) { $ctrl.ChkSrcContents.Add_Checked({ Lz65290d66ad }); $ctrl.ChkSrcContents.Add_Unchecked({ Lz65290d66ad }) }
+if ($ctrl.BtnShowFiles) { $ctrl.BtnShowFiles.Add_Click({ Lz2f3645411f -Paths @(@($script:CheckFiles) | ForEach-Object { "$($_.Path)" }) }) }
+$ctrl.TxtFolder.Add_LostFocus({ Lz97fc1b27bf })
+$ctrl.TxtSourceSub.Add_LostFocus({ Lz97fc1b27bf })
+$ctrl.TxtLoc.Add_TextChanged({ Lz65290d66ad })
+$ctrl.TxtLib.Add_TextChanged({ Lz65290d66ad })
 $script:NestSuspend = $false
-function Lz6a9ec9be9f {
+function Lze7f9045505 {
     if ($script:NestSuspend) { return }
     if (-not $script:JobOpen -or -not $script:ConfigPath) { return }
     try {
         $cfg = Read-ConfigJson $script:ConfigPath
-        Lz83e58f47c1 -Cfg $cfg -Path 'destination.nestUnderProjectFolder' -Value ([bool]$ctrl.ChkNest.IsChecked)
+        Lz1a01d03e9b -Cfg $cfg -Path 'destination.nestUnderProjectFolder' -Value ([bool]$ctrl.ChkNest.IsChecked)
         Write-ConfigJson -Cfg $cfg -Path $script:ConfigPath
         try { $script:Cfg = Import-ResolvedConfig $script:ConfigPath } catch { }
-        Lz20a2195fff $(if ($ctrl.ChkNest.IsChecked) {
+        Lzcd3b6c7e2b $(if ($ctrl.ChkNest.IsChecked) {
             "Each project will go into its own folder at the destination."
         } else {
             "Files will go straight into the destination folder, with no project folder added."
         })
     } catch { (Show-Msg -Text ("Could not save that setting.`n`nTechnical detail: $($_.Exception.Message)")) }
-    Lze1a8c05da8
+    Lz65290d66ad
 }
-$ctrl.ChkNest.Add_Checked({ Lz6a9ec9be9f })
-$ctrl.ChkNest.Add_Unchecked({ Lz6a9ec9be9f })
+$ctrl.ChkNest.Add_Checked({ Lze7f9045505 })
+$ctrl.ChkNest.Add_Unchecked({ Lze7f9045505 })
 $script:ProjectRows = @()
 $script:RunStatus = @{}
-function Lz2f84b76f44 {
+function Lzd3a356b761 {
     $rows = New-Object System.Collections.Generic.List[object]
     foreach ($p in $script:Projects) {
         $dest = '(not set)'; $status = 'Not set'
@@ -2351,7 +2398,7 @@ function Lz2f84b76f44 {
     }
     $script:ProjectRows = $rows
 }
-function Lz8e617bf9c8 {
+function Lz0d759ce2d1 {
     param([string]$Name, [string]$Status)
     $n = "$Name".Trim(); if (-not $n) { return }
     $script:RunStatus[$n] = $Status
@@ -2359,7 +2406,7 @@ function Lz8e617bf9c8 {
     foreach ($r in $script:ProjectRows) { if ($r.Name -eq $n) { $r.Status = $Status; $changed = $true } }
     if ($changed) { try { $ctrl.LstProjects.Items.Refresh() } catch {} }
 }
-function Lz69b26de9fc {
+function Lzddbf2eafa4 {
     $q = "$($ctrl.TxtFilter.Text)".Trim()
     $selIds = @(); foreach ($si in $ctrl.LstProjects.SelectedItems) { $selIds += $si.Id }
     $view = New-Object System.Collections.ObjectModel.ObservableCollection[object]
@@ -2373,8 +2420,8 @@ function Lz69b26de9fc {
     if ($ctrl.TxtFilterHint) { $ctrl.TxtFilterHint.Visibility = if ($q) { 'Collapsed' } else { 'Visible' } }
 }
 function Update-ProjectList {
-    Lz2f84b76f44
-    Lz69b26de9fc
+    Lzd3a356b761
+    Lzddbf2eafa4
     $hasProjects = $false
     foreach ($p in $script:Projects) { $hasProjects = $true; break }
     $ctrl.GettingStarted.Visibility = if ($hasProjects) { 'Collapsed' } else { 'Visible' }
@@ -2384,12 +2431,12 @@ function Update-ProjectList {
         $ctrl.RowRun.Height      = (New-Object System.Windows.GridLength 1, ([System.Windows.GridUnitType]::Star))
     }
 }
-function Lze9f82afa0b {
+function Lz2566d4a812 {
     $sel = $ctrl.LstProjects.SelectedItem
     if (-not $sel) { return $null }
     return @($script:Projects | Where-Object { $_.Id -eq $sel.Id }) | Select-Object -First 1
 }
-function Lz26be4b7c20 {
+function Lz49905c4aa9 {
     $out = New-Object System.Collections.Generic.List[object]
     foreach ($sel in $ctrl.LstProjects.SelectedItems) {
         $sid = $sel.Id
@@ -2397,15 +2444,15 @@ function Lz26be4b7c20 {
     }
     return ,$out.ToArray()
 }
-$script:ActionButtons = @('BtnConnect','BtnPreflight','BtnDryRun','BtnTransfer','BtnDelta','BtnValidate','BtnSizeCheck')
-function Lz48ff63bac8 {
+$script:ActionButtons = @('BtnConnect','BtnPreflight','BtnDryRun','BtnTransfer','BtnDelta','BtnRerunFailed','BtnValidate','BtnSizeCheck')
+function Lz426ce693d8 {
     $bad = New-Object System.Collections.Generic.List[string]
     foreach ($p in $script:Projects) {
         if (-not $script:Map.ContainsKey($p.Id)) { continue }
         $d = $script:Map[$p.Id]
         $sub = ''; if ($d.ContainsKey('SourceSubPath')) { $sub = "$($d.SourceSubPath)".Trim().Trim('/').Trim('\') }
         if (-not $sub) { continue }
-        try { [void](Lz23c0db4e93 -ProjectId $p.Id -SubPath $sub) }
+        try { [void](Lze230ec5f1c -ProjectId $p.Id -SubPath $sub) }
         catch { $bad.Add("$($p.Name):`n  $($_.Exception.Message)") }
     }
     if ($bad.Count) {
@@ -2414,12 +2461,12 @@ function Lz48ff63bac8 {
     }
     return $true
 }
-function Lz0aaa019706 {
+function Lzaf749572a6 {
     $bad = New-Object System.Collections.Generic.List[string]
     $seen = @{}
     $needGraph = @($script:Projects | Where-Object { $script:Map.ContainsKey($_.Id) -and (@('OneDrive','SharePoint') -contains $script:Map[$_.Id].DestinationType) }).Count -gt 0
     if ($needGraph) {
-        try { [void](Lz46ba6ca8b5) }
+        try { [void](Lz10d4cbcc21) }
         catch {
             (Show-Msg -Text ("Nothing has run. " + $_.Exception.Message) -Caption ('Cannot sign in to Microsoft 365') -Buttons ('OK') -Icon ('Error')) | Out-Null
             return $false
@@ -2435,7 +2482,7 @@ function Lz0aaa019706 {
             if ($seen.ContainsKey($key)) { if ($seen[$key]) { $bad.Add("$($p.Name):`n  $($seen[$key])") }; continue }
             $seen[$key] = ''
             try {
-                $drv = Lz205c5f2cd1 -Path "users/$([uri]::EscapeDataString($upn))/drive"
+                $drv = Lze1af180c81 -Path "users/$([uri]::EscapeDataString($upn))/drive"
                 if (-not $drv) { throw 'no drive returned' }
             } catch {
                 $seen[$key] = "OneDrive not found for '$upn'. Check the address is spelled correctly, the user has a Microsoft 365 licence, and they have opened their OneDrive at least once."
@@ -2448,7 +2495,7 @@ function Lz0aaa019706 {
             if ($seen.ContainsKey($key)) { if ($seen[$key]) { $bad.Add("$($p.Name):`n  $($seen[$key])") }; continue }
             $seen[$key] = ''
             try {
-                $libs = Lz05081bee56 -Url $url
+                $libs = Lz5471207b8b -Url $url
                 if ($null -eq $libs) { throw "the site '$url' was not found. Check the URL." }
                 if ($lib -and (@($libs) -notcontains $lib)) { throw "the site is fine, but it has no library called '$lib' (it has: $(@($libs) -join ', '))." }
             } catch {
@@ -2463,7 +2510,7 @@ function Lz0aaa019706 {
     }
     return $true
 }
-function Lzf66d8fffa0 {
+function Lz71cb2eceac {
     param([string[]] $EngineArgs, [string] $Label, [scriptblock] $OnComplete)
     $script:OnEngineComplete = $OnComplete
     if (-not $script:JobOpen) { (Show-Msg -Text ('Open or create a migration job first (New or Open, top left). Everything runs inside a job so its logs and reports stay together.')); return }
@@ -2475,10 +2522,12 @@ function Lzf66d8fffa0 {
             return
         }
     }
-    try { Lz6546fb5ff5 $true 'Checking source folders...'; $srcOk = Lz48ff63bac8 } finally { Lz6546fb5ff5 $false }
-    if (-not $srcOk) { return }
+    if (($EngineArgs -contains 'Transfer') -or ($EngineArgs -contains 'Validate') -or ($EngineArgs -contains 'SizeCheck') -or ($EngineArgs -contains 'PreFlight')) {
+        try { Lza7d5101dea $true 'Checking source folders...'; $srcOk = Lz426ce693d8 } finally { Lza7d5101dea $false }
+        if (-not $srcOk) { return }
+    }
     if (($EngineArgs -contains '-Execute') -or ($EngineArgs -contains 'Validate') -or ($EngineArgs -contains 'SizeCheck')) {
-        try { Lz6546fb5ff5 $true 'Checking destinations...'; $dstOk = Lz0aaa019706 } finally { Lz6546fb5ff5 $false }
+        try { Lza7d5101dea $true 'Checking destinations...'; $dstOk = Lzaf749572a6 } finally { Lza7d5101dea $false }
         if (-not $dstOk) { return }
     }
     $script:OutFile = [System.IO.Path]::GetTempFileName()
@@ -2507,10 +2556,11 @@ function Lzf66d8fffa0 {
     }
     $extra = @('-GuiMode','-VerboseFiles')
     $engArgs = @('-NoProfile','-ExecutionPolicy','Bypass','-File', $script:EnginePath, '-ConfigPath', $script:ConfigPath) + $EngineArgs + $extra
-    Lz20a2195fff "$Label running..."
+    Lzcd3b6c7e2b "$Label running..."
     $ctrl.Prog.IsIndeterminate = $true
     $script:ActionButtons | ForEach-Object { $ctrl[$_].IsEnabled = $false }
     $script:Stopping = $false
+    $script:QuietPausing = $false
     $script:Paused = $false
     $ctrl.BtnStop.IsEnabled = $true
     if ($ctrl.BtnPause) {
@@ -2518,7 +2568,7 @@ function Lzf66d8fffa0 {
         $ctrl.BtnPauseTitle.Text = 'Pause'
         if ($ctrl.BtnPauseDesc) { $ctrl.BtnPauseDesc.Text = 'Available once files start moving.' }
     }
-    Lzc164eb2021 "----- $Label -----"
+    Lz37b8b56fb4 "----- $Label -----"
     $script:Proc = Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList $engArgs -PassThru -NoNewWindow -RedirectStandardOutput $script:OutFile -RedirectStandardError "$($script:OutFile).err"
     $script:Timer = New-Object System.Windows.Threading.DispatcherTimer
     $script:Timer.Interval = [TimeSpan]::FromMilliseconds(300)
@@ -2534,24 +2584,24 @@ function Lzf66d8fffa0 {
                     $text = $script:Partial + $chunk
                     $lines = $text -split "`r?`n"
                     $script:Partial = $lines[-1]
-                    for ($k = 0; $k -lt $lines.Count - 1; $k++) { try { Lzc164eb2021 $lines[$k] } catch {} }
+                    for ($k = 0; $k -lt $lines.Count - 1; $k++) { try { Lz37b8b56fb4 $lines[$k] } catch {} }
                 }
             }
         } catch {}
         $script:SpinIdx = ($script:SpinIdx + 1) % 4
         $spin = @('|','/','-','\')[$script:SpinIdx]
-        $ctrl.LblElapsed.Text = "$spin  Elapsed " + (Lz994b068406 ((Get-Date) - $script:RunStart))
+        $ctrl.LblElapsed.Text = "$spin  Elapsed " + (Format-Span ((Get-Date) - $script:RunStart))
         if ($script:Proc.HasExited) {
             $script:Timer.Stop()
-            if ($script:Partial) { Lzc164eb2021 $script:Partial; $script:Partial = '' }
+            if ($script:Partial) { Lz37b8b56fb4 $script:Partial; $script:Partial = '' }
             $errFile = "$($script:OutFile).err"
-            if (Test-Path $errFile) { $e = Get-Content $errFile -Raw; if ($e) { Lzc164eb2021 $e } }
+            if (Test-Path $errFile) { $e = Get-Content $errFile -Raw; if ($e) { Lz37b8b56fb4 $e } }
             $ctrl.Prog.IsIndeterminate = $false; $ctrl.Prog.Value = 100
-            $ctrl.LblElapsed.Text = 'Elapsed ' + (Lz994b068406 ((Get-Date) - $script:RunStart))
+            $ctrl.LblElapsed.Text = 'Elapsed ' + (Format-Span ((Get-Date) - $script:RunStart))
             $ctrl.LblEta.Text = ''
             $oc = $null
             try {
-                $ocPath = Join-Path (Lzd8c11c0a95) 'lastrun-outcome.json'
+                $ocPath = Join-Path (Lz4058025c59) 'lastrun-outcome.json'
                 if ((Test-Path $ocPath) -and ((Get-Item $ocPath).LastWriteTime -ge $script:RunStart.AddSeconds(-5))) {
                     $oc = Get-Content $ocPath -Raw | ConvertFrom-Json
                 }
@@ -2564,7 +2614,7 @@ function Lzf66d8fffa0 {
             elseif ($script:TrialExhausted) {
                 $plainOutcome = "did not run: this tenant's free evaluation is used up. Nothing was copied and nothing was changed. See the licence window for how to migrate everything."
                 $sev = 'warn'
-                Lz2262eee1e6
+                Lzaf02f4f9f2
             }
             elseif ($script:LicenceBlocked -and ("$($script:LicenceBlocked)" -match '(?i)revok')) {
                 $plainOutcome = "did not run: this licence has been revoked. Nothing was changed."
@@ -2575,9 +2625,11 @@ function Lzf66d8fffa0 {
                 $plainOutcome = "needs a licence for this Microsoft 365 tenant. Nothing was changed. See the licence window for how to get one."
                 $sev = 'warn'
                 $detail = if ("$($script:LicenceBlocked)" -match 'different|cannot be moved|another') { "About this run: $($script:LicenceBlocked)" } else { '' }
-                Lzd822d07542 -Detail $detail
+                Lz18ab3333af -Detail $detail
             }
-            elseif ($script:Paused) {
+            elseif ($script:QuietPausing) {
+                $plainOutcome = 'paused for quiet hours. Files already uploaded are kept, and it will resume automatically as a Sync at the next window while this app stays open.'; $sev = 'warn'
+            } elseif ($script:Paused) {
                 $plainOutcome = 'paused. Files already uploaded are kept. Click Resume to carry on from where it stopped.'; $sev = 'warn'
             } elseif ($script:Stopping) {
                 $plainOutcome = 'stopped by you. Files already uploaded are kept; carry on later with ''Sync new and changed''.'; $sev = 'warn'
@@ -2607,12 +2659,12 @@ function Lzf66d8fffa0 {
             if ($script:TrialCapped) {
                 $plainOutcome = "evaluation copy complete. $($script:TrialCopied) file(s) were copied for real into this tenant and are ready to verify. This was a sample - licence the tenant to migrate the rest."
                 $sev = 'warn'
-                Lz8e393232ff -Copied $script:TrialCopied
+                Lz637367dbc3 -Copied $script:TrialCopied
             }
-            if ($script:Paused) { Lzc164eb2021 "----- Paused. What had already uploaded and verified is saved. Click Resume to carry on. -----" }
-            elseif ($script:Stopping) { Lzc164eb2021 "----- Stopped. What had already uploaded and verified is saved. Click 'Sync new and changed' to carry on. -----" }
+            if ($script:Paused) { Lz37b8b56fb4 "----- Paused. What had already uploaded and verified is saved. Click Resume to carry on. -----" }
+            elseif ($script:Stopping) { Lz37b8b56fb4 "----- Stopped. What had already uploaded and verified is saved. Click 'Sync new and changed' to carry on. -----" }
             $stripWord = switch ($sev) { 'ok' { 'finished' } 'warn' { 'finished, with notes' } default { 'finished, with problems' } }
-            Lz20a2195fff ("$($script:CurLabel) $stripWord - the verdict is in the summary below.")
+            Lzcd3b6c7e2b ("$($script:CurLabel) $stripWord - the verdict is in the summary below.")
             $ctrl.ThrottleBanner.Visibility = 'Collapsed'
             $ctrl.BtnStop.IsEnabled = $false
             if ($ctrl.BtnPause) {
@@ -2625,6 +2677,8 @@ function Lzf66d8fffa0 {
                 }
             }
             $script:ActionButtons | ForEach-Object { $ctrl[$_].IsEnabled = $true }
+            Lze924eef667
+            if ($script:LastRunArgs -contains '-Execute') { Lz9622ee2b0d -Severity $sev }
             if ($script:RunStatus.Count) { try { Update-ProjectList } catch {} }
             try {
                 $txt = "$($ctrl.TxtLog.Text)"
@@ -2666,10 +2720,10 @@ function Lzf66d8fffa0 {
     })
     $script:Timer.Start()
 }
-function Lz9bcf58401a {
+function Lz214ef6fecf {
     param([string]$Prompt, [string]$Title = 'Input', [string]$Default = '')
     $w = New-Object System.Windows.Window; $w.Title = $Title; $w.SizeToContent = 'Height'; $w.Width = 440
-    Lz7adedfce11 $w
+    Lzbc22fda021 $w
     $w.WindowStartupLocation = 'CenterScreen'; $w.ResizeMode = 'NoResize'
     $w.FontFamily = New-Object System.Windows.Media.FontFamily('Segoe UI'); $w.FontSize = 13; $w.Background = [System.Windows.Media.Brushes]::White
     $sp = New-Object System.Windows.Controls.StackPanel; $sp.Margin = '18'
@@ -2726,7 +2780,7 @@ function Show-Msg {
 </Window>
 "@
     $w = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $mx))
-    Lz7adedfce11 $w
+    Lzbc22fda021 $w
     $w.Title = if ($Caption) { $Caption } else { 'Datto Workplace to SharePoint Migrator' }
     try { if ($win -and $win.IsVisible) { $w.Owner = $win } } catch { }
     $w.FindName('Head').Text = $head
@@ -2772,7 +2826,7 @@ function Show-Msg {
     try { [void]$w.ShowDialog() } catch {}
     return $script:MsgResult
 }
-function Lz0546c96fd6 {
+function Lzc60aefbe7a {
     param([string]$Title, [string]$Heading, [object[]]$Sections, [string]$Yes, [string]$No = 'Close', [switch]$Brand)
     [xml]$ex = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -2802,13 +2856,13 @@ function Lz0546c96fd6 {
 </Window>
 "@
     $w = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $ex))
-    Lz7adedfce11 $w
+    Lzbc22fda021 $w
     $w.Title = $Title
     $head = $w.FindName('Head'); $body = $w.FindName('Body'); $btns = $w.FindName('Buttons')
     $head.Text = $Heading
     if ($Brand) {
         $img = $w.FindName('BrandLogo')
-        Lzf84779ecdb $img
+        Lz6d4ba804d6 $img
         if ($img -and $img.Source) { $w.FindName('BrandChip').Visibility = 'Visible' }
     }
     foreach ($s in $Sections) {
@@ -2843,11 +2897,11 @@ function Lz0546c96fd6 {
     [void]$w.ShowDialog()
     return $script:ExplainResult
 }
-$script:JobButtons = @('BtnPreflight','BtnDryRun','BtnTransfer','BtnDelta','BtnValidate','BtnSizeCheck','BtnOpenReport','BtnOpenAudit','BtnApplyCap')
-function Lzbba6ea7743 { param([bool]$On) foreach ($n in $script:JobButtons) { if ($ctrl[$n]) { $ctrl[$n].IsEnabled = $On } } }
+$script:JobButtons = @('BtnPreflight','BtnDryRun','BtnTransfer','BtnDelta','BtnSchedule','BtnValidate','BtnSizeCheck','BtnOpenReport','BtnCertificate','BtnOpenAudit','BtnApplyCap')
+function Lz453f412a53 { param([bool]$On) foreach ($n in $script:JobButtons) { if ($ctrl[$n]) { $ctrl[$n].IsEnabled = $On } } }
 $script:JobMenuItems = @('MnuJobSave','MnuJobSaveAs','MnuJobRename','MnuJobOpenFolder','MnuJobClose','MnuJobDelete')
-function Lz9dad955a63 { param([bool]$On) foreach ($n in $script:JobMenuItems) { if ($ctrl[$n]) { $ctrl[$n].IsEnabled = $On } } }
-function Lz56114cbde1 {
+function Lze235040386 { param([bool]$On) foreach ($n in $script:JobMenuItems) { if ($ctrl[$n]) { $ctrl[$n].IsEnabled = $On } } }
+function Lzd1a6db9b04 {
     try {
         $ctrl.MnuJobRecent.Items.Clear()
         $cur = Get-RegSetting 'RecentJobs'
@@ -2856,21 +2910,21 @@ function Lz56114cbde1 {
         foreach ($p in $list) {
             $nm=$p; try { $jj=Join-Path (Split-Path $p) 'job.json'; if (Test-Path $jj) { $nm=(Get-Content $jj -Raw|ConvertFrom-Json).name } } catch {}
             $mi=New-Object System.Windows.Controls.MenuItem; $mi.Header=$nm; $mi.Tag=$p
-            $mi.Add_Click({ param($s,$e) if (Test-Path $s.Tag) { Lzb13ee64e8a -ConfigFile $s.Tag; Lzec66862390 } else { (Show-Msg -Text ('That job no longer exists.')) } })
+            $mi.Add_Click({ param($s,$e) if (Test-Path $s.Tag) { Lzb2ce610eb2 -ConfigFile $s.Tag; Lzee9149ceef } else { (Show-Msg -Text ('That job no longer exists.')) } })
             [void]$ctrl.MnuJobRecent.Items.Add($mi)
         }
     } catch {}
 }
-function Lz7f4f0f9b45 { param([string]$ConfigFile)
+function Lz6a5d972c5d { param([string]$ConfigFile)
     try {
         $cur = Get-RegSetting 'RecentJobs'
         $list = if ($cur) { @($cur -split "`n" | Where-Object { $_ }) } else { @() }
         $list = @(@($ConfigFile) + @($list | Where-Object { $_ -ne $ConfigFile })) | Select-Object -First 8
-        Lz72fd4a5484 -Name 'RecentJobs' -Value ($list -join "`n")
+        Lz555805c62d -Name 'RecentJobs' -Value ($list -join "`n")
     } catch {}
-    Lz56114cbde1
+    Lzd1a6db9b04
 }
-function Lz84e18f3b3f {
+function Lz62d9146760 {
     param([ValidateSet('Cancelled','Incomplete')][string]$Status, [string]$Note='', [scriptblock]$OnDone)
     if (-not (Test-Path $script:EnginePath)) { if ($OnDone) { & $OnDone }; return }
     try {
@@ -2878,7 +2932,7 @@ function Lz84e18f3b3f {
         $script:FinProc = Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList $fin -PassThru -WindowStyle Hidden
     } catch { $script:FinProc = $null }
     if (-not $script:FinProc) { if ($OnDone) { & $OnDone }; return }
-    if ($Note) { Lz20a2195fff $Note }
+    if ($Note) { Lzcd3b6c7e2b $Note }
     $script:FinOnDone = $OnDone
     $script:FinStart = Get-Date
     $script:FinTimer = New-Object System.Windows.Threading.DispatcherTimer
@@ -2895,8 +2949,9 @@ function Lz84e18f3b3f {
     })
     $script:FinTimer.Start()
 }
-function Lzb13ee64e8a {
+function Lzb2ce610eb2 {
     param([string]$ConfigFile)
+    if ($script:Sched) { Lz05d119483e -Why 'Schedule cancelled (job changed).' }
     $script:ConfigPath = $ConfigFile
     Protect-ConfigFileInPlace $ConfigFile
     $name = '(config)'
@@ -2908,6 +2963,7 @@ function Lzb13ee64e8a {
     Update-ProjectList
     $ctrl.LblConn.Text = 'Not connected'; $ctrl.LblConn.Foreground = 'Gray'
     try { $script:Cfg = Import-ResolvedConfig $ConfigFile } catch {}
+    Lze924eef667
     try {
         $cu = 0; $cd = 0
         if ($script:Cfg -and ($script:Cfg.run.PSObject.Properties.Name -contains 'bandwidth')) {
@@ -2927,15 +2983,15 @@ function Lzb13ee64e8a {
         $script:NestSuspend = $false
     } catch { $script:NestSuspend = $false }
     $script:JobOpen = $true
-    $ctrl.BtnConnect.IsEnabled = $true; Lz9dad955a63 $true
-    Lzbba6ea7743 $true
-    Lz7f4f0f9b45 $ConfigFile
+    $ctrl.BtnConnect.IsEnabled = $true; Lze235040386 $true
+    Lz453f412a53 $true
+    Lz6a5d972c5d $ConfigFile
     try {
         if ($script:Cfg -and $script:Cfg.run.reportRoot) {
             $ra = Join-Path $script:Cfg.run.reportRoot 'run-active.json'
             if (Test-Path $ra) {
-                Lz84e18f3b3f -Status Incomplete -Note 'Recovering a previous run that did not finish...' -OnDone {
-                    Lz20a2195fff 'A previous run had not finished; it has been recorded as incomplete. Open the report to see what completed, then ''Sync new and changed'' to continue.'
+                Lz62d9146760 -Status Incomplete -Note 'Recovering a previous run that did not finish...' -OnDone {
+                    Lzcd3b6c7e2b 'A previous run had not finished; it has been recorded as incomplete. Open the report to see what completed, then ''Sync new and changed'' to continue.'
                 }
             }
         }
@@ -2943,7 +2999,7 @@ function Lzb13ee64e8a {
 }
 $ctrl.MnuJobNew.Add_Click({
   try {
-    $name = Lz9bcf58401a -Prompt "Name for this migration job (e.g. the company or project name):" -Title 'New migration job'
+    $name = Lz214ef6fecf -Prompt "Name for this migration job (e.g. the company or project name):" -Title 'New migration job'
     if (-not $name -or -not $name.Trim()) { return }
     $name = $name.Trim()
     $slug = ($name -replace '[^A-Za-z0-9._-]','_').Trim('_'); if (-not $slug) { $slug = 'job' }
@@ -2955,20 +3011,20 @@ $ctrl.MnuJobNew.Add_Click({
         $tmpl.run.logRoot           = Join-Path $jobDir 'logs'
         $tmpl.run.reportRoot        = Join-Path $jobDir 'reports'
         $tmpl.run.stateRoot         = Join-Path $jobDir 'state'
-        Lz83e58f47c1 -Cfg $tmpl -Path 'destination.nestUnderProjectFolder' -Value $false
+        Lz1a01d03e9b -Cfg $tmpl -Path 'destination.nestUnderProjectFolder' -Value $false
         if ($tmpl.run.PSObject.Properties.Name -contains 'report') { $tmpl.run.report.brand = "$name - Datto Workplace to SharePoint Migrator" }
         Write-ConfigJson -Cfg $tmpl -Path (Join-Path $jobDir 'config.json')
         @{ name = $name; slug = $slug; created = (Get-Date).ToString('o'); tenantId = "$($tmpl.auth.tenantId)"; endpoint = "$($tmpl.datto.endpointUrl)"; notes = '' } | ConvertTo-Json | Set-Content -Path (Join-Path $jobDir 'job.json') -Encoding UTF8
-        Lzb13ee64e8a -ConfigFile (Join-Path $jobDir 'config.json')
+        Lzb2ce610eb2 -ConfigFile (Join-Path $jobDir 'config.json')
         (Show-Msg -Text ("Job '$name' is ready.`n`nYour projects will be listed automatically when you close this message. For each project you want to copy:`n`n1.  Select it in the list on the left.`n2.  On the right, optionally set a Source subfolder to copy just part of the project (leave it blank for the whole project).`n3.  Choose where its files should go, then click 'Apply to this project'.`n`nThe job keeps its own mapping, logs, reports and resume state, so it will not disturb your other jobs. It reuses the connection already set up on this computer.") -Caption ('Migration job created') -Icon ('Information'))
-        Lzec66862390
+        Lzee9149ceef
     } catch { (Show-Msg -Text ("The migration job could not be created.`n`nCheck the name has no unusual characters, and that you have permission to write to the jobs folder.`n`nTechnical detail: $($_.Exception.Message)")) }
 })
 $ctrl.MnuJobOpen.Add_Click({
     $jobs = @(Get-ChildItem $script:JobsRoot -Directory -ErrorAction SilentlyContinue | Where-Object { Test-Path (Join-Path $_.FullName 'config.json') })
     if (-not $jobs.Count) { (Show-Msg -Text ("No migration jobs yet. Click New to create one.")); return }
     $w = New-Object System.Windows.Window; $w.Title = 'Open migration job'; $w.Width = 460; $w.Height = 360
-    Lz7adedfce11 $w
+    Lzbc22fda021 $w
     $w.WindowStartupLocation = 'CenterScreen'
     $sp = New-Object System.Windows.Controls.DockPanel; $sp.Margin = '12'
     $lb = New-Object System.Windows.Controls.ListBox
@@ -2987,16 +3043,16 @@ $ctrl.MnuJobOpen.Add_Click({
     $ok.Add_Click({ if ($script:OpenList.SelectedItem) { $script:OpenPick = $script:OpenList.SelectedItem.Tag; $script:OpenWin.DialogResult = $true } })
     $lb.Add_MouseDoubleClick({ if ($script:OpenList.SelectedItem) { $script:OpenPick = $script:OpenList.SelectedItem.Tag; $script:OpenWin.DialogResult = $true } })
     [void]$w.ShowDialog()
-    if ($script:OpenPick) { Lzb13ee64e8a -ConfigFile $script:OpenPick; Lzec66862390 }
+    if ($script:OpenPick) { Lzb2ce610eb2 -ConfigFile $script:OpenPick; Lzee9149ceef }
 })
 $ctrl.MnuJobSave.Add_Click({
     if (-not $script:JobOpen) { (Show-Msg -Text ('Open or create a migration job first.')); return }
-    if (Save-Mapping) { Lz20a2195fff 'Migration job saved.' }
+    if (Save-Mapping) { Lzcd3b6c7e2b 'Migration job saved.' }
 })
 $ctrl.MnuJobSaveAs.Add_Click({
     if (-not $script:JobOpen) { (Show-Msg -Text ('Open a migration job first, then Save As to copy it.')); return }
     try {
-        $name = Lz9bcf58401a -Prompt "New name for the copy:" -Title 'Save job as'
+        $name = Lz214ef6fecf -Prompt "New name for the copy:" -Title 'Save job as'
         if (-not $name -or -not $name.Trim()) { return }
         $name = $name.Trim()
         $slug = ($name -replace '[^A-Za-z0-9._-]','_').Trim('_'); if (-not $slug) { $slug = 'job' }
@@ -3014,22 +3070,22 @@ $ctrl.MnuJobSaveAs.Add_Click({
         $srcMap = Join-Path (Split-Path $script:ConfigPath) 'reports\mapping.csv'
         if (-not (Test-Path $srcMap)) { $srcMap = Join-Path ($script:Cfg.run.reportRoot) 'mapping.csv' }
         if (Test-Path $srcMap) { $newRep = Join-Path $jobDir 'reports'; New-Item -ItemType Directory -Path $newRep -Force | Out-Null; Copy-Item $srcMap (Join-Path $newRep 'mapping.csv') -Force }
-        Lzb13ee64e8a -ConfigFile (Join-Path $jobDir 'config.json')
+        Lzb2ce610eb2 -ConfigFile (Join-Path $jobDir 'config.json')
         (Show-Msg -Text ("Saved as '$name'. The destinations were copied, and your projects will be listed automatically when you close this message.") -Caption ('Saved as')) | Out-Null
-        Lzec66862390
+        Lzee9149ceef
     } catch { (Show-Msg -Text ("Could not Save As: $($_.Exception.Message)")) }
 })
 $ctrl.MnuJobExit.Add_Click({ $win.Close() })
-$ctrl.MnuSettingsChecklist.Add_Click({ Lz69bc5552ba })
-$ctrl.MnuSettingsApi.Add_Click({ Lz83927bb7fe })
-$ctrl.MnuSettingsWizard.Add_Click({ Lzca1733374f })
-$ctrl.MnuSettingsEmail.Add_Click({ Lz045cf06793 })
-$ctrl.MnuSettingsTuning.Add_Click({ Lz939055a5ac })
-$ctrl.MnuSettingsDecommission.Add_Click({ Lz372fbf0e86 })
+$ctrl.MnuSettingsChecklist.Add_Click({ Lzef5e6f6fbd })
+$ctrl.MnuSettingsApi.Add_Click({ Lz597f1b2c26 })
+$ctrl.MnuSettingsWizard.Add_Click({ Lz70acca6b03 })
+$ctrl.MnuSettingsEmail.Add_Click({ Lz51a627d6a5 })
+$ctrl.MnuSettingsTuning.Add_Click({ Lz7f7750e958 })
+$ctrl.MnuSettingsDecommission.Add_Click({ Lz032f318119 })
 $ctrl.MnuHelpHowto.Add_Click({
-    [void](Lz0546c96fd6 -Title 'How to use' -Heading 'How to use this tool' -Sections $script:QuickStartSections -No 'Close')
+    [void](Lzc60aefbe7a -Title 'How to use' -Heading 'How to use this tool' -Sections $script:QuickStartSections -No 'Close')
 })
-function Lze280d8d240 {
+function Lz4b948eadad {
     param([string]$Text)
     $t = "$Text"
     foreach ($scope in @('Process','User','Machine')) {
@@ -3037,7 +3093,7 @@ function Lze280d8d240 {
         try { $s = [Environment]::GetEnvironmentVariable('DATTO_CLIENT_SECRET', $scope) } catch {}
         if ($s -and "$s".Length -ge 6) { $t = $t.Replace("$s", '***REDACTED-DATTO-SECRET***') }
     }
-    $s2 = Lz9bcc8b0521 'DATTO_CLIENT_SECRET'
+    $s2 = Lz2c4c468a3a 'DATTO_CLIENT_SECRET'
     if ($s2 -and "$s2".Length -ge 6) { $t = $t.Replace("$s2", '***REDACTED-DATTO-SECRET***') }
     $t = [regex]::Replace($t, '(?i)\bBasic\s+[A-Za-z0-9+/=]{16,}',            'Basic ***REDACTED***')
     $t = [regex]::Replace($t, '(?i)\bBearer\s+[A-Za-z0-9\-\._~\+/=]{16,}',    'Bearer ***REDACTED***')
@@ -3063,13 +3119,13 @@ function Build-SupportBundle {
             $info.Add(("  {0,-20} {1}" -f $k, $(if ($v) { $v } else { '(not set)' })))
         }
         $sec = $null
-        try { $sec = Lz26dbd273a2 } catch {}
+        try { $sec = Lzcc6218e58d } catch {}
         $info.Add(("  {0,-20} {1}" -f 'Datto secret', $(if ($sec) { 'set (value NOT included)' } else { 'NOT SET' })))
         $th = [string](Get-RegSetting 'CertThumbprint'); $certTxt = 'no thumbprint recorded'
         try { if ($th) { $c = Get-ChildItem "Cert:\CurrentUser\My\$th" -ErrorAction SilentlyContinue; $certTxt = if ($c -and $c.HasPrivateKey) { "installed, private key present, expires $($c.NotAfter)" } else { 'thumbprint recorded but certificate NOT installed' } } } catch {}
         $info.Add(("  {0,-20} {1}" -f 'Certificate', $certTxt))
         Set-Content -Path (Join-Path $stage 'system-info.txt') -Value ($info -join "`r`n") -Encoding UTF8
-        try { Set-Content -Path (Join-Path $stage 'gui-window-log.txt') -Value (Lze280d8d240 "$($ctrl.TxtLog.Text)") -Encoding UTF8 } catch {}
+        try { Set-Content -Path (Join-Path $stage 'gui-window-log.txt') -Value (Lz4b948eadad "$($ctrl.TxtLog.Text)") -Encoding UTF8 } catch {}
         $copied = 0
         if ($script:Cfg) {
             $sets = @(
@@ -3087,7 +3143,7 @@ function Build-SupportBundle {
             try { if ($script:ConfigPath -and (Test-Path $script:ConfigPath)) { Set-Content -Path (Join-Path $stage 'job-config.json') -Value (Unprotect-ConfigText (Get-Content $script:ConfigPath -Raw)) -Encoding UTF8; $copied++ } } catch {}
         }
         foreach ($f in @(Get-ChildItem -Path $stage -Recurse -File -Include '*.log','*.txt','*.json','*.csv','*.html' -ErrorAction SilentlyContinue)) {
-            try { Set-Content -Path $f.FullName -Value (Lze280d8d240 (Get-Content $f.FullName -Raw -ErrorAction Stop)) -Encoding UTF8 } catch {}
+            try { Set-Content -Path $f.FullName -Value (Lz4b948eadad (Get-Content $f.FullName -Raw -ErrorAction Stop)) -Encoding UTF8 } catch {}
         }
         $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
         $safeJob = (("$($ctrl.LblJob.Text)") -replace '[^\w\-]', '-') -replace '-+', '-'
@@ -3104,8 +3160,8 @@ $ctrl.MnuHelpSupport.Add_Click({
     $ver = $script:AppVersion
     $tid = [string](Get-RegSetting 'TenantId')
     $job = "$($ctrl.LblJob.Text)"
-    Lz6546fb5ff5 $true 'Collecting logs and reports for support...'
-    try { $b = Build-SupportBundle } finally { Lz6546fb5ff5 $false }
+    Lza7d5101dea $true 'Collecting logs and reports for support...'
+    try { $b = Build-SupportBundle } finally { Lza7d5101dea $false }
     if (-not $b) { return }
     $body = "Describe the problem here." + "`n`n--- Details (please keep) ---`n" + "Version: $ver`n" + "Tenant: $tid`n" + "Job: $job`n`n" +
             "PLEASE ATTACH THIS FILE (it is on your Desktop):`n$($b.Zip)`n`n" +
@@ -3114,9 +3170,9 @@ $ctrl.MnuHelpSupport.Add_Click({
     $uri = "mailto:support@liscaragh.com?subject=" + [uri]::EscapeDataString("Datto Workplace to SharePoint Migrator support - $job") + "&body=" + [uri]::EscapeDataString($body)
     try { Start-Process $uri } catch { (Show-Msg -Text ("Could not open your email app. Please email support@liscaragh.com and include:`n`n$body")) }
 })
-function Lzf9768115ec { return (Join-Path (Split-Path $PSScriptRoot -Parent) 'licence.json') }
-function Lz2e2f0b9d27 {
-    $path = Lzf9768115ec
+function Lz8a2e8034ba { return (Join-Path (Split-Path $PSScriptRoot -Parent) 'licence.json') }
+function Lzccb73d0635 {
+    $path = Lz8a2e8034ba
     if (-not (Test-Path $path)) { return "No licence installed.`n`nWithout one you can test the connection, list projects and run 'Compare sizes'. Copying files and 'Verify files arrived' need a licence: Help > Install licence file. To buy one: support@liscaragh.com" }
     try {
         $j = Get-Content $path -Raw | ConvertFrom-Json
@@ -3125,8 +3181,8 @@ function Lz2e2f0b9d27 {
         return "Licensed to : $($pl.Customer)`nMicrosoft tenant : $($pl.TenantId)`nLicence ID : $($pl.LicenceId)`nIssued : $($pl.Issued)  ($expTxt)`nFile : $path`n`nEach licence covers exactly one Microsoft 365 tenant and cannot be moved to another. The licence is checked, and its tenant matched against the live connection, every time a run starts."
     } catch { return "A licence file exists at $path but could not be read: $($_.Exception.Message)`n`nReinstall it via Help > Install licence file." }
 }
-$ctrl.MnuHelpLicence.Add_Click({ (Show-Msg -Text ("Datto Workplace to SharePoint Migrator" + "`n" + "(c) Liscaragh Software. All rights reserved." + "`n`n" + (Lz2e2f0b9d27)) -Caption ('Licence')) | Out-Null })
-function Lz84141b847e {
+$ctrl.MnuHelpLicence.Add_Click({ (Show-Msg -Text ("Datto Workplace to SharePoint Migrator" + "`n" + "(c) Liscaragh Software. All rights reserved." + "`n`n" + (Lzccb73d0635)) -Caption ('Licence')) | Out-Null })
+function Lz32228e5699 {
     $nl = [Environment]::NewLine
     return ("Available now, without a licence:" + $nl +
             "   - Connect to Datto and Microsoft 365" + $nl +
@@ -3138,15 +3194,15 @@ function Lz84141b847e {
             "Needs a licence:" + $nl +
             "   - Migrating beyond those files (a full Upload or Sync of everything)")
 }
-function Lz62db661148 {
+function Lz5d8bdbb9d0 {
     $nl = [Environment]::NewLine
     $body = "This copy is running in unlicensed (evaluation) mode." + $nl + $nl +
             "You can evaluate a full migration without a licence - connect, list, Preview and Compare all work, and you can copy up to $($script:TrialLimitDisplay) of your own files for real to prove it end to end, then Verify them - so you can see exactly what a migration does before you buy." + $nl + $nl +
-            (Lz84141b847e) + $nl + $nl +
+            (Lz32228e5699) + $nl + $nl +
             "Each licence covers one Microsoft 365 tenant, for life. To obtain one, visit https://www.liscaragh.com (or email support@liscaragh.com), then install it here via Help > Install licence file."
     (Show-Msg -Text $body -Caption 'Unlicensed (evaluation) mode' -Icon 'Information') | Out-Null
 }
-function Lzd822d07542 {
+function Lz18ab3333af {
     param([string]$Detail = '')
     $body = "This step needs a licence." + [Environment]::NewLine + [Environment]::NewLine +
             "Uploading, syncing and verifying act on your real data, so each needs a licence for this Microsoft 365 tenant. Without one you can still test the connection, list projects, Preview what would copy (nothing is copied), and Compare sizes - so you can see exactly what a migration would do before you buy." + [Environment]::NewLine + [Environment]::NewLine
@@ -3154,9 +3210,9 @@ function Lzd822d07542 {
     $body += "To obtain a licence, visit https://www.liscaragh.com (or email support@liscaragh.com). When you receive the licence file, install it here via Help > Install licence file."
     (Show-Msg -Text $body -Caption 'Licence required') | Out-Null
 }
-function Lz71ff25ecea {
+function Lzcd57a92bb9 {
     param([string]$For = 'copy')
-    if (Test-Path (Lzf9768115ec)) { return $true }
+    if (Test-Path (Lz8a2e8034ba)) { return $true }
     if ($For -eq 'verify') { return $true }
     $nl = [Environment]::NewLine
     $body = "You do not have a licence installed, so this runs in evaluation mode." + $nl + $nl +
@@ -3165,7 +3221,7 @@ function Lz71ff25ecea {
             "Copy up to $($script:TrialLimitDisplay) file(s) now?"
     return ((Show-Msg -Text $body -Caption 'Evaluation mode' -Buttons 'YesNo' -Icon 'Warning') -eq 'Yes')
 }
-function Lz2262eee1e6 {
+function Lzaf02f4f9f2 {
     $nl = [Environment]::NewLine
     $what = if ($script:TrialBucketLabel -eq 'FirstPass') { 'full copy' } else { 'sync' }
     $body = "The free evaluation for this Microsoft 365 tenant is used up." + $nl + $nl +
@@ -3174,7 +3230,7 @@ function Lz2262eee1e6 {
             "To migrate everything into this tenant, licence it at https://www.liscaragh.com (or email support@liscaragh.com), then install the licence via Help > Install licence file."
     (Show-Msg -Text $body -Caption 'Evaluation used up' -Icon 'Warning') | Out-Null
 }
-function Lz8e393232ff {
+function Lz637367dbc3 {
     param([int]$Copied = 0)
     $nl = [Environment]::NewLine
     $body = "It works. $Copied file(s) were copied for real into this Microsoft 365 tenant and are ready to verify." + $nl + $nl +
@@ -3190,9 +3246,9 @@ $ctrl.MnuHelpLicInstall.Add_Click({
     try {
         $j = Get-Content $dlg.FileName -Raw | ConvertFrom-Json
         if (-not ($j.PSObject.Properties.Name -contains 'PayloadB64') -or -not ($j.PSObject.Properties.Name -contains 'Signature')) { throw 'that file is not a licence file (it has no licence payload).' }
-        $dest = Lzf9768115ec
+        $dest = Lz8a2e8034ba
         Copy-Item -LiteralPath $dlg.FileName -Destination $dest -Force
-        (Show-Msg -Text ("Licence installed.`n`n" + (Lz2e2f0b9d27)) -Caption 'Licence installed') | Out-Null
+        (Show-Msg -Text ("Licence installed.`n`n" + (Lzccb73d0635)) -Caption 'Licence installed') | Out-Null
     } catch {
         (Show-Msg -Text ("That file could not be installed: $($_.Exception.Message)") -Caption 'Licence') | Out-Null
     }
@@ -3275,23 +3331,23 @@ function Invoke-UpdateCheck {
             return
         }
         try { [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12 } catch {}
-        Lz6546fb5ff5 $true 'Checking for updates...'
+        Lza7d5101dea $true 'Checking for updates...'
         $descJson = $null
         try { $descJson = (Invoke-WebRequest -Uri ($script:UpdateBaseUrl + 'update.json') -UseBasicParsing -TimeoutSec 30).Content }
         catch { throw "Could not reach the update service. Check the internet connection and try again. ($($_.Exception.Message))" }
         $payload = ConvertFrom-UpdateDescriptor -Json "$descJson" -PublicKeyB64 $script:UpdatePublicKeyB64
         $cur = [version]"$($script:AppVersion)"; $new = [version]"$($payload.version)"
         if ($new -le $cur) {
-            Lz6546fb5ff5 $false
+            Lza7d5101dea $false
             (Show-Msg -Text "You are on the latest version ($($script:AppVersion))." -Caption ('Check for updates')) | Out-Null
             return
         }
         if (($payload.PSObject.Properties.Name -contains 'minVersion') -and $payload.minVersion -and ($cur -lt [version]"$($payload.minVersion)")) {
-            Lz6546fb5ff5 $false
+            Lza7d5101dea $false
             (Show-Msg -Text ("Version $($payload.version) is available, but this installation is too old to update in place. Please re-run the full installer (support@liscaragh.com). Nothing has been changed.") -Caption ('Update available') -Icon ('Warning')) | Out-Null
             return
         }
-        Lz6546fb5ff5 $false
+        Lza7d5101dea $false
         $notes = if ($payload.PSObject.Properties.Name -contains 'notes') { "$($payload.notes)" } else { '' }
         $confirmText = "Version $($payload.version) is available (you have $($script:AppVersion))." + $(if ($notes) { "`n`n" + $notes } else { '' }) + "`n`nUpdate now? The app will restart. Your licence, connection settings and jobs are not affected."
         if ((Show-Msg -Text $confirmText -Caption ('Update available') -Buttons ('YesNo')) -ne 'Yes') { return }
@@ -3299,7 +3355,7 @@ function Invoke-UpdateCheck {
         $stage = Join-Path ([System.IO.Path]::GetTempPath()) ('liscara-update-' + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $stage -Force | Out-Null
         try {
-            Lz6546fb5ff5 $true "Downloading version $($payload.version)..."
+            Lza7d5101dea $true "Downloading version $($payload.version)..."
             foreach ($f in $payload.files) {
                 if ("$($f.op)".ToLower() -ne 'put') { continue }
                 if (-not (Test-SafeInstallPath -InstallDir $installDir -Rel "$($f.path)")) { throw "The update refers to an unsafe path ('$($f.path)')." }
@@ -3321,7 +3377,7 @@ function Invoke-UpdateCheck {
             }
             $backup = Join-Path $installDir ('update-backup-' + (Get-Date -Format 'yyyyMMddHHmmss'))
             $err = Invoke-UpdateApply -InstallDir $installDir -StageDir $stage -Payload $payload -BackupDir $backup
-            Lz6546fb5ff5 $false
+            Lza7d5101dea $false
             if ($err) { (Show-Msg -Text $err -Caption ('Update failed') -Icon ('Error')) | Out-Null; return }
             $restartText = "Updated to version $($payload.version). The app needs to restart to use it. Restart now?"
             $restart = ((Show-Msg -Text $restartText -Caption ('Update complete') -Buttons ('YesNo')) -eq 'Yes')
@@ -3335,11 +3391,11 @@ function Invoke-UpdateCheck {
                 } catch { (Show-Msg -Text 'Update applied. Please close and reopen the app to use the new version.' -Caption ('Update complete')) | Out-Null }
             }
         } finally {
-            Lz6546fb5ff5 $false
+            Lza7d5101dea $false
             try { Remove-Item -Path $stage -Recurse -Force -ErrorAction SilentlyContinue } catch {}
         }
     } catch {
-        Lz6546fb5ff5 $false
+        Lza7d5101dea $false
         (Show-Msg -Text ("$($_.Exception.Message)") -Caption ('Check for updates') -Icon ('Warning')) | Out-Null
     }
 }
@@ -3351,7 +3407,7 @@ $ctrl.MnuHelpAbout.Add_Click({
         @{ H = 'Website'; B = "https://www.liscaragh.com" }
         @{ H = 'Support'; B = "support@liscaragh.com  (Help menu > Email support attaches the useful details for you)" }
     )
-    [void](Lz0546c96fd6 -Title 'About' -Heading 'Datto Workplace to SharePoint Migrator' -Sections $sections -No 'Close' -Brand)
+    [void](Lzc60aefbe7a -Title 'About' -Heading 'Datto Workplace to SharePoint Migrator' -Sections $sections -No 'Close' -Brand)
 })
 $ctrl.MnuHelpCheck.Add_Click({
     $lines = New-Object System.Collections.Generic.List[string]
@@ -3361,7 +3417,7 @@ $ctrl.MnuHelpCheck.Add_Click({
     $need = 'DattoEndpointUrl','DattoClientId','TenantId','GraphClientId','SharePointRootUrl','OneDriveHostUrl','UpnDomain'
     $missing = @($need | Where-Object { -not (Get-RegSetting $_) })
     & $mark ($missing.Count -eq 0) 'Connection settings' $(if($missing.Count){'missing: ' + ($missing -join ', ')}else{'all present'})
-    $sec = $null; try { $sec = Lz26dbd273a2 } catch {}
+    $sec = $null; try { $sec = Lzcc6218e58d } catch {}
     & $mark ([bool]$sec) 'Datto secret set' ''
     $th = [string](Get-RegSetting 'CertThumbprint'); $certOk = $false
     try { if ($th) { $c = Get-ChildItem "Cert:\CurrentUser\My\$th" -ErrorAction SilentlyContinue; $certOk = [bool]($c -and $c.HasPrivateKey) } } catch {}
@@ -3373,7 +3429,7 @@ $ctrl.MnuHelpCheck.Add_Click({
     } catch { & $mark $false 'Datto reachable' $_.Exception.Message }
     try {
         $tid=[string](Get-RegSetting 'TenantId'); $app=[string](Get-RegSetting 'GraphClientId')
-        if ($tid -and $app -and $certOk) { $tok=Lz92752b81b9 -TenantId $tid -ClientId $app -Thumbprint $th; $s=Invoke-RestMethod -Method GET -Uri 'https://graph.microsoft.com/v1.0/sites/root' -Headers @{Authorization="Bearer $tok"} -ErrorAction Stop; & $mark $true 'Microsoft 365 reachable' "$($s.webUrl)" }
+        if ($tid -and $app -and $certOk) { $tok=Lzf35a568d05 -TenantId $tid -ClientId $app -Thumbprint $th; $s=Invoke-RestMethod -Method GET -Uri 'https://graph.microsoft.com/v1.0/sites/root' -Headers @{Authorization="Bearer $tok"} -ErrorAction Stop; & $mark $true 'Microsoft 365 reachable' "$($s.webUrl)" }
         else { & $mark $false 'Microsoft 365 reachable' 'set the tenant, app ID and certificate first' }
     } catch { & $mark $false 'Microsoft 365 reachable' $_.Exception.Message }
     try {
@@ -3389,7 +3445,7 @@ $ctrl.MnuJobOpenFolder.Add_Click({
 })
 $ctrl.MnuJobRename.Add_Click({
     if (-not $script:JobOpen) { return }
-    $new = Lz9bcf58401a -Prompt 'New display name for this job:' -Title 'Rename job' -Default "$($ctrl.LblJob.Text)"
+    $new = Lz214ef6fecf -Prompt 'New display name for this job:' -Title 'Rename job' -Default "$($ctrl.LblJob.Text)"
     if (-not $new -or -not $new.Trim()) { return }
     $new = $new.Trim()
     try {
@@ -3398,70 +3454,70 @@ $ctrl.MnuJobRename.Add_Click({
         if ($j.PSObject.Properties.Name -contains 'name') { $j.name = $new } else { $j | Add-Member -NotePropertyName name -NotePropertyValue $new -Force }
         $j | ConvertTo-Json | Set-Content $jf -Encoding UTF8
         $ctrl.LblJob.Text = $new; $win.Title = "Datto Workplace to SharePoint Migrator  -  $new"
-        Lz20a2195fff "Renamed to $new"
+        Lzcd3b6c7e2b "Renamed to $new"
     } catch { (Show-Msg -Text ("Could not rename: $($_.Exception.Message)")) }
 })
-function Lz33e592e954 {
+function Lzf0ed0da7be {
     $script:JobOpen = $false; $script:Cfg = $null; $script:Projects = @(); $script:Map = @{}; $script:GraphReady = $false
     $script:RunStatus = @{}; Update-ProjectList
     if ($ctrl.RunSummaryBanner) { $ctrl.RunSummaryBanner.Visibility = 'Collapsed' }
     $ctrl.LblProject.Text = '(no project selected)'
     $ctrl.LblConn.Text = 'Not connected'; $ctrl.LblConn.Foreground = 'Gray'
     $ctrl.LblJob.Text = '(no job open)'; $win.Title = 'Datto Workplace to SharePoint Migrator'
-    $ctrl.BtnConnect.IsEnabled = $false; Lz9dad955a63 $false
-    Lzbba6ea7743 $false
+    $ctrl.BtnConnect.IsEnabled = $false; Lze235040386 $false
+    Lz453f412a53 $false
 }
-$ctrl.MnuJobClose.Add_Click({ Lz33e592e954; Lz20a2195fff 'Job closed' })
+$ctrl.MnuJobClose.Add_Click({ Lzf0ed0da7be; Lzcd3b6c7e2b 'Job closed' })
 $ctrl.MnuJobDelete.Add_Click({
     if (-not $script:JobOpen) { return }
     $nm = "$($ctrl.LblJob.Text)"; $dir = Split-Path $script:ConfigPath
     if ((Show-Msg -Text ("Delete the job '$nm' and all its logs, reports and resume state from this computer?`n`nThis cannot be undone. Files already uploaded to Microsoft 365 are not affected.") -Caption ('Delete job') -Buttons ('YesNo') -Icon ('Warning')) -ne 'Yes') { return }
-    Lz33e592e954
-    try { if ($dir -and (Test-Path $dir)) { Remove-Item $dir -Recurse -Force -ErrorAction Stop } ; Lz56114cbde1; Lz20a2195fff "Deleted job '$nm'" }
+    Lzf0ed0da7be
+    try { if ($dir -and (Test-Path $dir)) { Remove-Item $dir -Recurse -Force -ErrorAction Stop } ; Lzd1a6db9b04; Lzcd3b6c7e2b "Deleted job '$nm'" }
     catch { (Show-Msg -Text ("Could not fully delete: $($_.Exception.Message)")) }
 })
-function Lz6a9b5e9a73 {
+function Lz192dbfb476 {
     param([switch]$Quiet)
     if (-not $script:JobOpen) { if (-not $Quiet) { (Show-Msg -Text ('Create or open a named migration job before connecting.')) }; return }
     try {
-        Lz6546fb5ff5 $true 'Connecting...'
+        Lza7d5101dea $true 'Connecting...'
         $script:Cfg = Import-ResolvedConfig $script:ConfigPath
-        Lz0fe653215a 'Signing in to Datto and listing projects...'
-        $script:Projects = Lzef826c1c54
-        Lz0fe653215a "Found $($script:Projects.Count) project(s)."
-        Lz0aabd58dbe
-        try { Lzfc0353c021; Lz0fe653215a 'Connected to Microsoft 365.' } catch { Lz0fe653215a 'Could not sign in to Microsoft 365 yet. You can still set up mappings, but you will need this connected before uploading.'; Lz0fe653215a "Technical detail: $($_.Exception.Message)" }
+        Lzf4e4fbe7d0 'Signing in to Datto and listing projects...'
+        $script:Projects = Lzc2f2259c45
+        Lzf4e4fbe7d0 "Found $($script:Projects.Count) project(s)."
+        Lza4bed83ee9
+        try { Lz0d4d75071a; Lzf4e4fbe7d0 'Connected to Microsoft 365.' } catch { Lzf4e4fbe7d0 'Could not sign in to Microsoft 365 yet. You can still set up mappings, but you will need this connected before uploading.'; Lzf4e4fbe7d0 "Technical detail: $($_.Exception.Message)" }
         Update-ProjectList
         $ctrl.LblConn.Text = "Connected - $($script:Projects.Count) projects"
         $ctrl.LblConn.Foreground = 'Green'
-        Lz20a2195fff 'Connected'
+        Lzcd3b6c7e2b 'Connected'
     } catch {
         if ($Quiet) {
             $ctrl.LblConn.Text = 'Not connected - automatic connect failed'; $ctrl.LblConn.Foreground = 'Red'
-            Lz0fe653215a 'Could not connect automatically. Click ''Connect and list projects'' to try again.'
-            Lz0fe653215a "Technical detail: $($_.Exception.Message)"
-            Lz20a2195fff "Could not connect automatically ($($_.Exception.Message)). Click 'Connect and list projects' to try again."
+            Lzf4e4fbe7d0 'Could not connect automatically. Click ''Connect and list projects'' to try again.'
+            Lzf4e4fbe7d0 "Technical detail: $($_.Exception.Message)"
+            Lzcd3b6c7e2b "Could not connect automatically ($($_.Exception.Message)). Click 'Connect and list projects' to try again."
         } else {
             (Show-Msg -Text ("Could not connect.`n`nThe usual causes are: signed in to the wrong Microsoft 365 organisation, the Datto password not set up on this computer, or no internet connection. The log has more detail.`n`nTechnical detail: $($_.Exception.Message)") -Caption ('Connect failed'))
-            Lz20a2195fff 'Connect failed'
+            Lzcd3b6c7e2b 'Connect failed'
         }
     }
-    finally { Lz6546fb5ff5 $false }
+    finally { Lza7d5101dea $false }
 }
-$ctrl.BtnConnect.Add_Click({ Lz6a9b5e9a73 })
-function Lzec66862390 {
+$ctrl.BtnConnect.Add_Click({ Lz192dbfb476 })
+function Lzee9149ceef {
     $ep = [string](Get-RegSetting 'DattoEndpointUrl'); $id = [string](Get-RegSetting 'DattoClientId')
-    $sec = $null; try { $sec = Lz26dbd273a2 } catch {}
+    $sec = $null; try { $sec = Lzcc6218e58d } catch {}
     if (-not ($ep -and $id -and $sec)) {
-        Lz20a2195fff "Job ready. Set up your API details first (Settings > API settings), then click 'Connect and list projects'."
+        Lzcd3b6c7e2b "Job ready. Set up your API details first (Settings > API settings), then click 'Connect and list projects'."
         return
     }
-    Lz6a9b5e9a73 -Quiet
+    Lz192dbfb476 -Quiet
 }
 $ctrl.LstProjects.Add_SelectionChanged({
-    $p = Lze9f82afa0b
+    $p = Lz2566d4a812
     if (-not $p) { return }
-    $selCount = 0; try { $selCount = @(Lz26be4b7c20).Count } catch {}
+    $selCount = 0; try { $selCount = @(Lz49905c4aa9).Count } catch {}
     $ctrl.LblProject.Text = if ($selCount -gt 1) { "$($p.Name)   (+$($selCount - 1) more selected)" } else { $p.Name }
     $srcOne = ($selCount -le 1)
     foreach ($n in 'TxtSourceSub','ChkSrcContents','BtnBrowseSource','BtnTestSource') { if ($ctrl[$n]) { $ctrl[$n].IsEnabled = $srcOne } }
@@ -3476,7 +3532,7 @@ $ctrl.LstProjects.Add_SelectionChanged({
         if ($ctrl.ChkSrcContents) { $ctrl.ChkSrcContents.IsChecked = ($d.ContainsKey('SourceContentsOnly') -and "$($d.SourceContentsOnly)" -match '^(?i)true') }
     } else {
         $ctrl.RbOneDrive.IsChecked = $true
-        $ctrl.TxtLoc.Text = Lz2d30bf84d9
+        $ctrl.TxtLoc.Text = Lze1e38042b5
         $ctrl.TxtLib.Text = ''; $ctrl.TxtFolder.Text = ''; $ctrl.TxtSourceSub.Text = ''
         if ($ctrl.ChkSrcContents) { $ctrl.ChkSrcContents.IsChecked = $false }
     }
@@ -3487,25 +3543,25 @@ $ctrl.LstProjects.Add_SelectionChanged({
     }
     Set-DestModeUI
     Update-ApplyButtonState
-    Lze1a8c05da8
+    Lz65290d66ad
 })
-function Lz23f5aab71f {
+function Lzc3ecdda2c6 {
     param([switch]$Quiet)
     if ($ctrl.RbSkip.IsChecked) { return $null }
     if ($ctrl.RbOneDrive.IsChecked) {
         $upn = $ctrl.TxtLoc.Text.Trim()
         if (-not $upn) { if (-not $Quiet) { (Show-Msg -Text ("Enter the user's email / sign-in address.")) }; return 'ERR' }
-        return @{ DestinationType='OneDrive'; DestinationUrl="$($script:Cfg.destination.oneDriveHostUrl)/personal/$((ConvertTo-Slug $upn))"; TargetPrincipal=$upn; TargetLibrary=''; TargetSubFolder=(Lzc351d9fc31) }
+        return @{ DestinationType='OneDrive'; DestinationUrl="$($script:Cfg.destination.oneDriveHostUrl)/personal/$((ConvertTo-Slug $upn))"; TargetPrincipal=$upn; TargetLibrary=''; TargetSubFolder=(Lzd16deec314) }
     }
     $site = $ctrl.TxtLoc.Text.Trim().TrimEnd('/')
     if (-not $site) { if (-not $Quiet) { (Show-Msg -Text ('Enter a SharePoint site URL.')) }; return 'ERR' }
-    return @{ DestinationType='SharePoint'; DestinationUrl=$site; TargetPrincipal=''; TargetLibrary="$($ctrl.TxtLib.Text)".Trim(); TargetSubFolder=(Lzc351d9fc31) }
+    return @{ DestinationType='SharePoint'; DestinationUrl=$site; TargetPrincipal=''; TargetLibrary="$($ctrl.TxtLib.Text)".Trim(); TargetSubFolder=(Lzd16deec314) }
 }
 $ctrl.BtnApply.Add_Click({
-    $p = Lze9f82afa0b
+    $p = Lz2566d4a812
     if (-not $p) { (Show-Msg -Text ('Select a project first.')); return }
     if ($ctrl.RbSkip.IsChecked) { $script:Map.Remove($p.Id) | Out-Null; Update-ProjectList; [void](Write-MappingQuiet); return }
-    $d = Lz23f5aab71f
+    $d = Lzc3ecdda2c6
     if ($d -eq 'ERR') { return }
     if ($null -eq $d) { $script:Map.Remove($p.Id) | Out-Null }
     else {
@@ -3515,15 +3571,15 @@ $ctrl.BtnApply.Add_Click({
     }
     Update-ProjectList
     [void](Write-MappingQuiet)
-    Lz20a2195fff "Mapped and saved: $($p.Name)"
+    Lzcd3b6c7e2b "Mapped and saved: $($p.Name)"
 })
-$ctrl.TxtFilter.Add_TextChanged({ Lz69b26de9fc })
+$ctrl.TxtFilter.Add_TextChanged({ Lzddbf2eafa4 })
 $ctrl.BtnApplySel.Add_Click({
-    $sel = Lz26be4b7c20
+    $sel = Lz49905c4aa9
     if (-not $sel.Count) { (Show-Msg -Text ('Highlight one or more projects in the list first (Ctrl-click or Shift-click for several).')); return }
-    if (-not (Lzde7f260f3d -Count $sel.Count)) { return }
-    if ($ctrl.RbSkip.IsChecked) { foreach ($p in $sel) { $script:Map.Remove($p.Id) | Out-Null }; Update-ProjectList; [void](Write-MappingQuiet); Lz20a2195fff "Set $($sel.Count) project(s) to skip"; return }
-    $d = Lz23f5aab71f
+    if (-not (Lzecef64354c -Count $sel.Count)) { return }
+    if ($ctrl.RbSkip.IsChecked) { foreach ($p in $sel) { $script:Map.Remove($p.Id) | Out-Null }; Update-ProjectList; [void](Write-MappingQuiet); Lzcd3b6c7e2b "Set $($sel.Count) project(s) to skip"; return }
+    $d = Lzc3ecdda2c6
     if ($d -eq 'ERR') { return }
     $lib = $d.TargetLibrary; $folder = $d.TargetSubFolder
     foreach ($proj in $sel) {
@@ -3533,18 +3589,18 @@ $ctrl.BtnApplySel.Add_Click({
             $script:Map[$proj.Id] = @{ DestinationType='OneDrive'; DestinationUrl=$d.DestinationUrl; TargetPrincipal=$d.TargetPrincipal; TargetLibrary=''; TargetSubFolder=$folder; SourceSubPath=$keepSrc; SourceContentsOnly=$keepCo }
         } else {
             $sub = if ($folder) { "$($folder.TrimEnd('/'))/$($proj.Name)" } else { $proj.Name }
-            $script:Map[$proj.Id] = @{ DestinationType='SharePoint'; DestinationUrl=(Lzb9134b24cf); TargetPrincipal=''; TargetLibrary=$lib; TargetSubFolder=$sub; SourceSubPath=$keepSrc; SourceContentsOnly=$keepCo }
+            $script:Map[$proj.Id] = @{ DestinationType='SharePoint'; DestinationUrl=(Lz050ce2a5ca); TargetPrincipal=''; TargetLibrary=$lib; TargetSubFolder=$sub; SourceSubPath=$keepSrc; SourceContentsOnly=$keepCo }
         }
     }
     Update-ProjectList
     [void](Write-MappingQuiet)
-    Lz20a2195fff "Applied and saved for $($sel.Count) selected project(s)"
+    Lzcd3b6c7e2b "Applied and saved for $($sel.Count) selected project(s)"
 })
 $ctrl.BtnApplyAll.Add_Click({
-    if (-not (Lzde7f260f3d -Count (@($script:Projects).Count))) { return }
-    $d = Lz23f5aab71f
+    if (-not (Lzecef64354c -Count (@($script:Projects).Count))) { return }
+    $d = Lzc3ecdda2c6
     if ($d -eq 'ERR') { return }
-    if ($ctrl.RbSkip.IsChecked) { $script:Map.Clear(); Update-ProjectList; [void](Write-MappingQuiet); Lz20a2195fff 'All projects set to skip'; return }
+    if ($ctrl.RbSkip.IsChecked) { $script:Map.Clear(); Update-ProjectList; [void](Write-MappingQuiet); Lzcd3b6c7e2b 'All projects set to skip'; return }
     $lib = $d.TargetLibrary; $folder = $d.TargetSubFolder
     foreach ($proj in $script:Projects) {
         $keepSrc = if ($script:Map.ContainsKey($proj.Id) -and $script:Map[$proj.Id].ContainsKey('SourceSubPath')) { $script:Map[$proj.Id].SourceSubPath } else { '' }
@@ -3553,85 +3609,85 @@ $ctrl.BtnApplyAll.Add_Click({
             $script:Map[$proj.Id] = @{ DestinationType='OneDrive'; DestinationUrl=$d.DestinationUrl; TargetPrincipal=$d.TargetPrincipal; TargetLibrary=''; TargetSubFolder=$folder; SourceSubPath=$keepSrc; SourceContentsOnly=$keepCo }
         } else {
             $sub = if ($folder) { "$($folder.TrimEnd('/'))/$($proj.Name)" } else { $proj.Name }
-            $script:Map[$proj.Id] = @{ DestinationType='SharePoint'; DestinationUrl=(Lzb9134b24cf); TargetPrincipal=''; TargetLibrary=$lib; TargetSubFolder=$sub; SourceSubPath=$keepSrc; SourceContentsOnly=$keepCo }
+            $script:Map[$proj.Id] = @{ DestinationType='SharePoint'; DestinationUrl=(Lz050ce2a5ca); TargetPrincipal=''; TargetLibrary=$lib; TargetSubFolder=$sub; SourceSubPath=$keepSrc; SourceContentsOnly=$keepCo }
         }
     }
     Update-ProjectList
     [void](Write-MappingQuiet)
-    Lz20a2195fff "Applied and saved for all $($script:Projects.Count) projects"
+    Lzcd3b6c7e2b "Applied and saved for all $($script:Projects.Count) projects"
 })
 if ($ctrl.BtnPickLib) { $ctrl.BtnPickLib.Add_Click({
     $site = "$($ctrl.TxtLoc.Text)".Trim()
     if (-not $site) { $ctrl.LblCheck.Text = "Set the Site URL first (or use 'Find site...')."; $ctrl.LblCheck.Foreground = 'Red'; return }
     $libs = $null
     try {
-        Lz6546fb5ff5 $true 'Looking up libraries...'
-        $libs = Lz05081bee56 -Url $site -Refresh
-    } catch { $ctrl.LblCheck.Text = "Error: $($_.Exception.Message)"; $ctrl.LblCheck.Foreground = 'Red'; Lz6546fb5ff5 $false; return }
-    finally { Lz6546fb5ff5 $false }
+        Lza7d5101dea $true 'Looking up libraries...'
+        $libs = Lz5471207b8b -Url $site -Refresh
+    } catch { $ctrl.LblCheck.Text = "Error: $($_.Exception.Message)"; $ctrl.LblCheck.Foreground = 'Red'; Lza7d5101dea $false; return }
+    finally { Lza7d5101dea $false }
     if ($null -eq $libs) { $ctrl.LblCheck.Text = 'Site not found - check the URL.'; $ctrl.LblCheck.Foreground = 'Red'; return }
-    $picked = Lz69285fb468 -SiteUrl $site -Libraries $libs
+    $picked = Lz4c85d3deb7 -SiteUrl $site -Libraries $libs
     if ($picked) {
         $changed = ("$($ctrl.TxtLib.Text)".Trim() -ne "$picked")
         $ctrl.TxtLib.Text = $picked
         if ($changed -and "$($ctrl.TxtFolder.Text)".Trim()) {
             $ctrl.TxtFolder.Text = ''
-            Lz20a2195fff "Library set to $picked. The Folder box was cleared: its path belonged to the previous library."
+            Lzcd3b6c7e2b "Library set to $picked. The Folder box was cleared: its path belonged to the previous library."
         } else {
-            Lz20a2195fff "Library set to $picked"
+            Lzcd3b6c7e2b "Library set to $picked"
         }
         $ctrl.LblCheck.Text = "Library set to '$picked'."; $ctrl.LblCheck.Foreground = 'Green'
-        Lze1a8c05da8
+        Lz65290d66ad
     }
 }) }
 if ($ctrl.BtnBrowseFolder) { $ctrl.BtnBrowseFolder.Add_Click({
     if ($ctrl.RbSkip.IsChecked) { (Show-Msg -Text ('This project is set to skip, so there is no destination to browse.') -Caption ('Browse folders')); return }
     try {
-        Lz6546fb5ff5 $true 'Opening destination...'
-        Lzfc0353c021
-        $res = Lz841a3738f8
-    } catch { (Show-Msg -Text ($_.Exception.Message) -Caption ('Browse folders')); Lz6546fb5ff5 $false; return }
-    finally { Lz6546fb5ff5 $false }
-    $picked = Lzd0396845cb -DriveId $res.DriveId -Label $res.Label -StartPath ("$($ctrl.TxtFolder.Text)".Trim())
-    if ($null -ne $picked) { $ctrl.TxtFolder.Text = $picked; Lz20a2195fff ("Folder set to " + $(if ($picked) { "/$picked" } else { 'top level' })) }
+        Lza7d5101dea $true 'Opening destination...'
+        Lz0d4d75071a
+        $res = Lza1199a4178
+    } catch { (Show-Msg -Text ($_.Exception.Message) -Caption ('Browse folders')); Lza7d5101dea $false; return }
+    finally { Lza7d5101dea $false }
+    $picked = Lzdd8f1f6cf7 -DriveId $res.DriveId -Label $res.Label -StartPath ("$($ctrl.TxtFolder.Text)".Trim())
+    if ($null -ne $picked) { $ctrl.TxtFolder.Text = $picked; Lzcd3b6c7e2b ("Folder set to " + $(if ($picked) { "/$picked" } else { 'top level' })) }
 }) }
 if ($ctrl.BtnBrowseSource) { $ctrl.BtnBrowseSource.Add_Click({
-    $p = Lze9f82afa0b
+    $p = Lz2566d4a812
     if (-not $p) { (Show-Msg -Text ('Select a project on the left first, then browse its folders.') -Caption ('Browse source')); return }
     if (-not $script:Cfg) { (Show-Msg -Text ('Connect to Datto first (Connect and list projects), then browse.') -Caption ('Browse source')); return }
-    try { $picked = Lz189ab697d5 -ProjectId $p.Id -ProjectName $p.Name }
+    try { $picked = Lz7320c8f294 -ProjectId $p.Id -ProjectName $p.Name }
     catch { (Show-Msg -Text ("Could not open the project's folders: $($_.Exception.Message)") -Caption ('Browse source')); return }
-    if ($null -ne $picked) { $ctrl.TxtSourceSub.Text = $picked; Lz20a2195fff ("Source set to " + $(if ($picked) { "/$picked" } else { 'the whole project' })) }
+    if ($null -ne $picked) { $ctrl.TxtSourceSub.Text = $picked; Lzcd3b6c7e2b ("Source set to " + $(if ($picked) { "/$picked" } else { 'the whole project' })) }
 }) }
 if ($ctrl.BtnTestSource) { $ctrl.BtnTestSource.Add_Click({
-    $p = Lze9f82afa0b
+    $p = Lz2566d4a812
     if (-not $p) { (Show-Msg -Text ('Select a project on the left first.') -Caption ('Test source')); return }
     if (-not $script:Cfg) { (Show-Msg -Text ('Connect to Datto first (Connect and list projects), then test.') -Caption ('Test source')); return }
     $sub = "$($ctrl.TxtSourceSub.Text)".Trim().Trim('/').Trim('\')
     if (-not $sub) { $ctrl.LblSourceCheck.Text = 'No source subfolder set, so the whole project would be copied.'; $ctrl.LblSourceCheck.Foreground = 'Gray'; return }
     try {
-        Lz6546fb5ff5 $true 'Checking the source folder in Datto...'
-        $res = Lz23c0db4e93 -ProjectId $p.Id -SubPath $sub
-    } catch { $ctrl.LblSourceCheck.Text = "Source NOT found. $($_.Exception.Message)"; $ctrl.LblSourceCheck.Foreground = 'Red'; Lz6546fb5ff5 $false; return }
-    finally { Lz6546fb5ff5 $false }
+        Lza7d5101dea $true 'Checking the source folder in Datto...'
+        $res = Lze230ec5f1c -ProjectId $p.Id -SubPath $sub
+    } catch { $ctrl.LblSourceCheck.Text = "Source NOT found. $($_.Exception.Message)"; $ctrl.LblSourceCheck.Foreground = 'Red'; Lza7d5101dea $false; return }
+    finally { Lza7d5101dea $false }
     $ctrl.LblSourceCheck.Text = "Source found in Datto. It holds $($res.SubfolderCount) subfolder(s) directly inside. A run will scope to it, and the destination paths stay the same as a full run."
     $ctrl.LblSourceCheck.Foreground = 'Green'
 }) }
 $ctrl.BtnCheck.Add_Click({
     try {
-        Lz6546fb5ff5 $true 'Checking destination...'
+        Lza7d5101dea $true 'Checking destination...'
         if ($ctrl.RbOneDrive.IsChecked) {
             $upn = $ctrl.TxtLoc.Text.Trim()
-            $d = Lz205c5f2cd1 -Path "users/$([uri]::EscapeDataString($upn))/drive"
+            $d = Lze1af180c81 -Path "users/$([uri]::EscapeDataString($upn))/drive"
             $ctrl.LblCheck.Text = if ($d) { 'OneDrive found for this user.' } else { 'Not found.' }
         } else {
-            $libs = Lz05081bee56 -Url $ctrl.TxtLoc.Text.Trim()
+            $libs = Lz5471207b8b -Url $ctrl.TxtLoc.Text.Trim()
             if ($null -eq $libs) { $ctrl.LblCheck.Text = 'Site not found - check the URL.'; $ctrl.LblCheck.Foreground = 'Red'; return }
             $ctrl.LblCheck.Text = "Site OK. Libraries: " + ($libs -join ', ')
         }
         $ctrl.LblCheck.Foreground = 'Green'
     } catch { $ctrl.LblCheck.Text = "Not found / error: $($_.Exception.Message)"; $ctrl.LblCheck.Foreground = 'Red' }
-    finally { Lz6546fb5ff5 $false }
+    finally { Lza7d5101dea $false }
 })
 function Write-MappingQuiet {
     if (-not $script:Cfg) { return 0 }
@@ -3648,21 +3704,21 @@ function Write-MappingQuiet {
     elseif (Test-Path $out) { Remove-Item $out -Force -ErrorAction SilentlyContinue }
     return $rows.Count
 }
-function Lzf917cea32d {
+function Lz3e703868b8 {
     param($Project)
     if (-not $Project) { return '' }
     $s = "$($ctrl.TxtSourceSub.Text)".Trim().Trim('/').Trim('\')
     if ($s) { return "$($Project.Name) / $s" }
     return $Project.Name
 }
-function Lze1a8c05da8 {
+function Lz65290d66ad {
     if (-not $ctrl.LblDestPath) { return }
-    $p = Lze9f82afa0b
+    $p = Lz2566d4a812
     if (-not $p) {
         $ctrl.SourcePathBox.Visibility = 'Collapsed'; $ctrl.DestPathBox.Visibility = 'Collapsed'
         return
     }
-    $srcLabel = Lzf917cea32d -Project $p
+    $srcLabel = Lz3e703868b8 -Project $p
     $srcSub   = "$($ctrl.TxtSourceSub.Text)".Trim().Trim('/').Trim('\')
     $co = [bool]($ctrl.ChkSrcContents -and $ctrl.ChkSrcContents.IsChecked -and $srcSub)
     $ctrl.SourcePathBox.Visibility = 'Visible'
@@ -3674,7 +3730,7 @@ function Lze1a8c05da8 {
     $ctrl.DestPathBox.Visibility = 'Visible'
     $type = if ($ctrl.RbSite.IsChecked) { 'SharePoint' } else { 'OneDrive' }
     $loc  = "$($ctrl.TxtLoc.Text)".Trim()
-    $land = Get-GuiLandingPath -DestType $type -SiteUrl $loc -TargetSubFolder (Lzc351d9fc31) `
+    $land = Get-GuiLandingPath -DestType $type -SiteUrl $loc -TargetSubFolder (Lzd16deec314) `
                                -SpaceName $p.Name -SourceSubPath $srcSub -ContentsOnly $co
     $where = if ($type -eq 'SharePoint') {
         $lib = "$($ctrl.TxtLib.Text)".Trim(); if (-not $lib) { $lib = 'Documents' }
@@ -3693,7 +3749,7 @@ function Lze1a8c05da8 {
         }
     }
 }
-function Lzde7f260f3d {
+function Lzecef64354c {
     param([int]$Count)
     if ($Count -lt 2) { return $true }
     if ($ctrl.ChkNest.IsChecked) { return $true }
@@ -3704,9 +3760,9 @@ function Lzde7f260f3d {
 }
 function Update-ApplyButtonState {
     if (-not $ctrl.BtnApply) { return }
-    $sel = 0; try { $sel = @(Lz26be4b7c20).Count } catch { }
+    $sel = 0; try { $sel = @(Lz49905c4aa9).Count } catch { }
     $all = 0; try { $all = @($script:Projects).Count } catch { }
-    $p = Lze9f82afa0b
+    $p = Lz2566d4a812
     $ctrl.BtnApplyAll.Content = if ($all) { "Apply to ALL $all projects" } else { 'Apply to ALL projects' }
     if ($sel -gt 1) {
         $name = if ($p) { $p.Name } else { 'this project' }
@@ -3724,13 +3780,13 @@ function Update-ApplyButtonState {
         $ctrl.BtnApplySel.IsEnabled  = $false
     }
 }
-function Lz9a15565d9a {
+function Lz4be1563fa9 {
     if (-not $script:JobOpen) { return }
-    $p = Lze9f82afa0b
+    $p = Lz2566d4a812
     if (-not $p) { return }
     if (-not $script:Map.ContainsKey($p.Id)) { return }
     if ($ctrl.RbSkip.IsChecked) { return }
-    $d = Lz23f5aab71f -Quiet
+    $d = Lzc3ecdda2c6 -Quiet
     if ($d -eq 'ERR' -or $null -eq $d) { return }
     $d['SourceSubPath'] = "$($ctrl.TxtSourceSub.Text)".Trim().Trim('/').Trim('\')
     $d['SourceContentsOnly'] = $(if ($ctrl.ChkSrcContents -and $ctrl.ChkSrcContents.IsChecked -and $d['SourceSubPath']) { 'TRUE' } else { '' })
@@ -3747,16 +3803,16 @@ function Lz9a15565d9a {
     if ($same) { return }
     $script:Map[$p.Id] = $d
     Update-ProjectList
-    Lz20a2195fff "Captured your on-screen changes for '$($p.Name)' before running."
+    Lzcd3b6c7e2b "Captured your on-screen changes for '$($p.Name)' before running."
 }
 function Save-Mapping {
-    Lz9a15565d9a
+    Lz4be1563fa9
     $n = Write-MappingQuiet
     if (-not $n) { (Show-Msg -Text ('Nothing mapped yet. Set a destination for at least one project and click Apply.')); return $false }
-    Lz0fe653215a "Saved $n mapping(s)."
+    Lzf4e4fbe7d0 "Saved $n mapping(s)."
     return $true
 }
-function Lz0aabd58dbe {
+function Lza4bed83ee9 {
     $script:Map = @{}
     if (-not $script:Cfg) { return }
     $out = Join-Path $script:Cfg.run.reportRoot 'mapping.csv'
@@ -3768,12 +3824,12 @@ function Lz0aabd58dbe {
             $sco = ''; if ($r.PSObject.Properties.Name -contains 'SourceContentsOnly') { $sco = "$($r.SourceContentsOnly)" }
             $script:Map["$($r.SpaceId)"] = @{ DestinationType="$($r.DestinationType)"; DestinationUrl="$($r.DestinationUrl)"; TargetPrincipal="$($r.TargetPrincipal)"; TargetLibrary="$($r.TargetLibrary)"; TargetSubFolder="$($r.TargetSubFolder)"; SourceSubPath=$ssp; SourceContentsOnly=$sco }
         }
-        if ($script:Map.Count) { Lz0fe653215a "Loaded $($script:Map.Count) saved mapping(s) for this job." }
-    } catch { Lz0fe653215a "Could not read saved mappings: $($_.Exception.Message)" }
+        if ($script:Map.Count) { Lzf4e4fbe7d0 "Loaded $($script:Map.Count) saved mapping(s) for this job." }
+    } catch { Lzf4e4fbe7d0 "Could not read saved mappings: $($_.Exception.Message)" }
 }
-$ctrl.BtnPreflight.Add_Click({ if (Save-Mapping) { Lzf66d8fffa0 -EngineArgs @('-Action','PreFlight') -Label 'Check readiness' } })
-$ctrl.BtnDryRun.Add_Click({ if (Save-Mapping) { Lzf66d8fffa0 -EngineArgs @('-Action','Transfer','-Mode','FirstPass') -Label 'Preview (no upload)' } })
-function Lz3b074442d1 {
+$ctrl.BtnPreflight.Add_Click({ if (Save-Mapping) { Lz71cb2eceac -EngineArgs @('-Action','PreFlight') -Label 'Check readiness' } })
+$ctrl.BtnDryRun.Add_Click({ if (Save-Mapping) { Lz71cb2eceac -EngineArgs @('-Action','Transfer','-Mode','FirstPass') -Label 'Preview (no upload)' } })
+function Lzac781e3361 {
     $mapped = @($script:Projects | Where-Object { $script:Map.ContainsKey($_.Id) })
     $lines = @($mapped | ForEach-Object {
         $d = $script:Map[$_.Id]
@@ -3784,20 +3840,77 @@ function Lz3b074442d1 {
     $label = if ($mapped.Count -eq 1) { 'this project:' } else { "these $($mapped.Count) projects:" }
     return "$label`n  " + ($shown -join "`n  ")
 }
+function Lzb1b5aed0d5 {
+    if (-not $script:ConfigPath) { return $null }
+    try { return (Join-Path (Split-Path $script:ConfigPath) '.prechecklist-agreed') } catch { return $null }
+}
+function Lz4d6c8bf79f {
+    [xml]$cx = @"
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Before you migrate" Width="580" SizeToContent="Height" FontFamily="Segoe UI" FontSize="13"
+        WindowStartupLocation="CenterScreen" ResizeMode="NoResize" Background="White">
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Background="#2F5D8C" Padding="18,13">
+      <TextBlock Text="Before you migrate, please confirm" Foreground="White" FontSize="16" FontWeight="SemiBold"/>
+    </Border>
+    <Border DockPanel.Dock="Bottom" Background="#F7F8FA" BorderBrush="#E4E7EC" BorderThickness="0,1,0,0" Padding="16,11">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+        <Button x:Name="BtnProceed" Content="Proceed" Padding="18,5" Margin="0,0,8,0" IsEnabled="False"/>
+        <Button x:Name="BtnCancel" Content="Cancel" Padding="18,5" IsCancel="True"/>
+      </StackPanel>
+    </Border>
+    <StackPanel Margin="20,16">
+      <TextBlock TextWrapping="Wrap" Foreground="#1F2937" LineHeight="19" Margin="0,0,0,10"
+        Text="This copies data from Datto Workplace into Microsoft 365. It only reads from Datto and changes nothing there. Before the first upload for this job, please confirm:"/>
+      <TextBlock TextWrapping="Wrap" Margin="0,0,0,4" Text="1.  You are authorised to migrate this data from Datto to this Microsoft 365 destination."/>
+      <TextBlock TextWrapping="Wrap" Margin="0,0,0,4" Text="2.  The destination has an appropriate backup or recovery method."/>
+      <TextBlock TextWrapping="Wrap" Margin="0,0,0,4" Text="3.  Those backups have been tested."/>
+      <TextBlock TextWrapping="Wrap" Margin="0,0,0,4" Text="4.  Retention and versioning are enabled where appropriate."/>
+      <TextBlock TextWrapping="Wrap" Margin="0,0,0,12" Text="5.  The migration has first been tested on non-production data."/>
+      <CheckBox x:Name="ChkAgree" Content="I agree to all of the above" FontWeight="SemiBold" Margin="0,0,0,10"/>
+      <TextBlock TextWrapping="Wrap" Foreground="#667085" FontSize="12" LineHeight="17"
+        Text="This is a one-time check for this job. You can switch it off under Settings &gt; Performance and tuning."/>
+    </StackPanel>
+  </DockPanel>
+</Window>
+"@
+    $w = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $cx))
+    Lzbc22fda021 $w
+    $chk = $w.FindName('ChkAgree'); $ok = $w.FindName('BtnProceed')
+    $script:PreChkWin = $w; $script:PreChkOk = $ok
+    $chk.Add_Checked({ $script:PreChkOk.IsEnabled = $true })
+    $chk.Add_Unchecked({ $script:PreChkOk.IsEnabled = $false })
+    $ok.Add_Click({ $script:PreChkWin.DialogResult = $true })
+    return [bool]($w.ShowDialog())
+}
+function Lz112b6da7fc {
+    try {
+        if (-not $script:Cfg) { try { $script:Cfg = Import-ResolvedConfig $script:ConfigPath } catch {} }
+        $on = $true
+        try { if ($script:Cfg -and ($script:Cfg.run.PSObject.Properties.Name -contains 'confirmations') -and ($script:Cfg.run.confirmations.PSObject.Properties.Name -contains 'preMigrationChecklist')) { $on = [bool]$script:Cfg.run.confirmations.preMigrationChecklist } } catch {}
+        if (-not $on) { return $true }
+        $marker = Lzb1b5aed0d5
+        if ($marker -and (Test-Path $marker)) { return $true }
+        $agreed = Lz4d6c8bf79f
+        if ($agreed -and $marker) { try { Set-Content -Path $marker -Value ((Get-Date).ToString('o')) -Encoding UTF8 } catch {} }
+        return [bool]$agreed
+    } catch { return $true }
+}
 $ctrl.BtnTransfer.Add_Click({
     if (-not (Save-Mapping)) { return }
     $sections = @(
-        @{ H = 'What this does'; B = "Copies every file from " + (Lz3b074442d1) }
+        @{ H = 'What this does'; B = "Copies every file from " + (Lzac781e3361) }
         @{ H = 'What it changes'; B = 'Any file at the destination that also comes from Datto is overwritten with the Datto version, even if the destination copy is newer.' }
         @{ H = 'What it leaves alone'; B = 'Existing files at the destination that are not part of this copy (content that was already there and does not come from Datto) are untouched. Nothing is deleted.' }
         @{ H = 'When to use it'; B = 'For the first migration, or to force the Datto files back into line (for example to undo edits made in Microsoft 365).' }
         @{ B = 'This makes real changes.' }
     )
-    if (-not (Lz0546c96fd6 -Title 'Upload all files' -Heading 'Upload all files  -  Datto is the source of truth' -Sections $sections -Yes 'Upload all files' -No 'Cancel')) { return }
-    if (-not (Lz71ff25ecea)) { return }
-    Lzf66d8fffa0 -EngineArgs @('-Action','Transfer','-Mode','FirstPass','-Execute') -Label 'Upload all files'
+    if (-not (Lzc60aefbe7a -Title 'Upload all files' -Heading 'Upload all files  -  Datto is the source of truth' -Sections $sections -Yes 'Upload all files' -No 'Cancel')) { return }
+    if (-not (Lz112b6da7fc)) { return }
+    if (-not (Lzcd57a92bb9)) { return }
+    Lz71cb2eceac -EngineArgs @('-Action','Transfer','-Mode','FirstPass','-Execute') -Label 'Upload all files'
 })
-function Lz62ee1fcc5d {
+function Lza649122cc2 {
     [xml]$sx = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Sync new and changed" Width="600" SizeToContent="Height" MaxHeight="760" FontFamily="Segoe UI" FontSize="13"
@@ -3814,11 +3927,11 @@ function Lz62ee1fcc5d {
 </Window>
 "@
     $w = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $sx))
-    Lz7adedfce11 $w
+    Lzbc22fda021 $w
     $body = $w.FindName('Body')
     $intro = New-Object System.Windows.Controls.TextBlock
     $intro.TextWrapping = 'Wrap'; $intro.Foreground = '#1F2937'; $intro.LineHeight = 19; $intro.Margin = '0,0,0,12'
-    $intro.Text = "How should Sync decide what to copy for " + (Lz3b074442d1) + "`n`nIt compares Datto to the Microsoft 365 copy by modified date, file by file. Pick one:"
+    $intro.Text = "How should Sync decide what to copy for " + (Lzac781e3361) + "`n`nIt compares Datto to the Microsoft 365 copy by modified date, file by file. Pick one:"
     [void]$body.Children.Add($intro)
     $mk = {
         param($title,$sub,$val)
@@ -3846,11 +3959,25 @@ function Lz62ee1fcc5d {
 }
 $ctrl.BtnDelta.Add_Click({
     if (-not (Save-Mapping)) { return }
-    $mode = Lz62ee1fcc5d
+    $mode = Lza649122cc2
     if (-not $mode) { return }
     $label = if ($mode -eq 'AddMissing') { 'Sync: add new files only' } else { 'Sync: update where Datto is newer' }
-    if (-not (Lz71ff25ecea)) { return }
-    Lzf66d8fffa0 -EngineArgs @('-Action','Transfer','-Mode','Delta','-DeltaMode',$mode,'-Execute') -Label $label
+    if (-not (Lz112b6da7fc)) { return }
+    if (-not (Lzcd57a92bb9)) { return }
+    Lz71cb2eceac -EngineArgs @('-Action','Transfer','-Mode','Delta','-DeltaMode',$mode,'-Execute') -Label $label
+})
+$ctrl.BtnRerunFailed.Add_Click({
+    if (-not (Save-Mapping)) { return }
+    $sections = @(
+        @{ H = 'What this does'; B = 'Reads the most recent run''s record and re-copies ONLY the files that failed (an error, a download problem, a verification failure, or a file too large). Everything that already succeeded is left exactly as it is.' }
+        @{ H = 'When to use it'; B = 'Right after a run that finished with some files reporting a problem, to retry just those without re-checking the whole migration.' }
+        @{ H = 'If nothing failed'; B = 'It stops and says there is nothing to rerun, rather than copying anything. It never quietly turns into a full sync.' }
+        @{ B = 'This makes real changes, to the failed files only.' }
+    )
+    if (-not (Lzc60aefbe7a -Title 'Rerun failed files only' -Heading 'Rerun failed files only' -Sections $sections -Yes 'Rerun the failed files' -No 'Cancel')) { return }
+    if (-not (Lz112b6da7fc)) { return }
+    if (-not (Lzcd57a92bb9)) { return }
+    Lz71cb2eceac -EngineArgs @('-Action','Transfer','-Mode','Delta','-DeltaMode','NewerWins','-Execute','-FailedOnly') -Label 'Rerun failed files only'
 })
 $ctrl.BtnValidate.Add_Click({
     if (-not (Save-Mapping)) { return }
@@ -3860,20 +3987,33 @@ $ctrl.BtnValidate.Add_Click({
         @{ H = "How it decides 'up to date'"; B = 'By modified date, the same way Sync does. It is not a byte-for-byte content comparison. Each file''s content is already verified at the moment it is uploaded, so this confirms the destination has the current version. Office files carry their upload date, so they read as up to date, which is correct.' }
         @{ B = 'It changes nothing.' }
     )
-    if (-not (Lz0546c96fd6 -Title 'Verify files arrived' -Heading 'Verify files arrived' -Sections $sections -Yes 'Run the check' -No 'Cancel')) { return }
-    if (-not (Lz71ff25ecea -For 'verify')) { return }
-    Lzf66d8fffa0 -EngineArgs @('-Action','Validate') -Label 'Verify files arrived'
+    if (-not (Lzc60aefbe7a -Title 'Verify files arrived' -Heading 'Verify files arrived' -Sections $sections -Yes 'Run the check' -No 'Cancel')) { return }
+    if (-not (Lzcd57a92bb9 -For 'verify')) { return }
+    Lz71cb2eceac -EngineArgs @('-Action','Validate') -Label 'Verify files arrived'
 })
-$ctrl.BtnSizeCheck.Add_Click({ if (Save-Mapping) { Lzf66d8fffa0 -EngineArgs @('-Action','SizeCheck') -Label 'Compare sizes' } })
-function Lzd8c11c0a95 {
+$ctrl.BtnSizeCheck.Add_Click({ if (Save-Mapping) { Lz71cb2eceac -EngineArgs @('-Action','SizeCheck') -Label 'Compare sizes' } })
+function Lz4058025c59 {
     if (-not $script:Cfg) { try { $script:Cfg = Import-ResolvedConfig $script:ConfigPath } catch { return $null } }
     return $script:Cfg.run.reportRoot
 }
-function Lz152f200d9e {
+function Lze6a4649d89 {
+    try {
+        $rr = Lz4058025c59
+        if (-not $rr -or -not (Test-Path $rr)) { return $false }
+        $a = Get-ChildItem (Join-Path $rr 'audit-*.csv') -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if (-not $a) { return $false }
+        $fs = @('Error','DownloadError','VerifyFail','SkippedTooLarge')
+        return [bool](@(Import-Csv $a.FullName | Where-Object { $fs -contains "$($_.Status)" } | Select-Object -First 1).Count)
+    } catch { return $false }
+}
+function Lze924eef667 {
+    try { if ($ctrl.BtnRerunFailed) { $ctrl.BtnRerunFailed.IsEnabled = (Lze6a4649d89) } } catch {}
+}
+function Lz353b274ecb {
     if (-not $script:Cfg) { try { $script:Cfg = Import-ResolvedConfig $script:ConfigPath } catch { return $null } }
     return $script:Cfg.run.logRoot
 }
-function Lz486bb3d527 {
+function Lz35c0e4def1 {
     param([string]$Name)
     if ($Name -match '^(.+?) - (\d{4}-\d{2}-\d{2}) (\d{2})\.(\d{2})\.(\d{2}) - api-.+-\d+\.log$') {
         $when = ''
@@ -3898,7 +4038,7 @@ function Lz486bb3d527 {
     $what = if ($rt -and $map.ContainsKey($rt)) { $map[$rt] } elseif ($Name -like 'report-*') { 'Report' } elseif ($rt) { $rt } else { $Name }
     return @{ What = $what; When = $when }
 }
-function Lzffcbed2d2e {
+function Lz9cb718ae48 {
     param([string]$Folder, [string[]]$Patterns, [string]$Title, [string]$EmptyMsg, [string[]]$Exclude = @())
     if (-not $script:JobOpen) { (Show-Msg -Text ('Open a migration job first. Logs and reports live inside each job.')); return }
     if (-not $Folder -or -not (Test-Path $Folder)) { (Show-Msg -Text ($EmptyMsg)); return }
@@ -3907,7 +4047,7 @@ function Lzffcbed2d2e {
     $files = @($files | Sort-Object LastWriteTime -Descending)
     if (-not $files.Count) { (Show-Msg -Text ($EmptyMsg)); return }
     $rows = New-Object System.Collections.ObjectModel.ObservableCollection[object]
-    foreach ($f in $files) { $l = Lz486bb3d527 $f.Name; $rows.Add([pscustomobject]@{ What = $l.What; When = $l.When; File = $f.Name; Path = $f.FullName }) }
+    foreach ($f in $files) { $l = Lz35c0e4def1 $f.Name; $rows.Add([pscustomobject]@{ What = $l.What; When = $l.When; File = $f.Name; Path = $f.FullName }) }
     [xml]$px = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Open" Width="720" Height="460" FontFamily="Segoe UI" FontSize="13" Background="White" WindowStartupLocation="CenterScreen">
@@ -3928,7 +4068,7 @@ function Lzffcbed2d2e {
 </Window>
 "@
     $pw = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $px))
-    Lz7adedfce11 $pw
+    Lzbc22fda021 $pw
     $pw.Title = $Title
     $grid = $pw.FindName('Grid'); $bo = $pw.FindName('BtnOpen')
     $grid.ItemsSource = $rows; $grid.SelectedIndex = 0
@@ -3939,9 +4079,23 @@ function Lzffcbed2d2e {
     [void]$pw.ShowDialog()
     if ($script:PickPath) { Start-Process $script:PickPath }
 }
-$ctrl.BtnOpenReport.Add_Click({ Lzffcbed2d2e -Folder (Lzd8c11c0a95) -Patterns @('report-*.html') -Title 'Open a report' -EmptyMsg 'No reports yet. A report is created automatically after each upload or sync.' })
-$ctrl.BtnOpenAudit.Add_Click({ Lzffcbed2d2e -Folder (Lz152f200d9e) -Patterns @('*.log') -Title 'Open a log' -EmptyMsg 'No logs yet. Run an action first.' -Exclude @('*api-report-*.log','*api-finalize-*.log') })
-function Lzf4c5e18107 {
+$ctrl.BtnOpenReport.Add_Click({ Lz9cb718ae48 -Folder (Lz4058025c59) -Patterns @('report-*.html') -Title 'Open a report' -EmptyMsg 'No reports yet. A report is created automatically after each upload or sync.' })
+$ctrl.BtnCertificate.Add_Click({
+    if (Save-Mapping) {
+        Lz71cb2eceac -EngineArgs @('-Action','Certificate') -Label 'Completion certificate' -OnComplete {
+            $rr = Lz4058025c59
+            $cert = $null
+            if ($rr -and (Test-Path $rr)) { $cert = Get-ChildItem (Join-Path $rr 'certificate-*.html') -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1 }
+            if ($cert -and $cert.LastWriteTime -ge $script:RunStart.AddSeconds(-5)) {
+                Start-Process $cert.FullName
+            } else {
+                (Show-Msg -Text ("No certificate was issued. A completion certificate is only produced for a migration that finished: run Upload, then 'Sync new and changed' until nothing is left to copy, and 'Verify files arrived'. Then try this again." + [Environment]::NewLine + [Environment]::NewLine + "The detailed run report is always available from 'Open report'.") -Caption ('Completion certificate') -Icon ('Information')) | Out-Null
+            }
+        }
+    }
+})
+$ctrl.BtnOpenAudit.Add_Click({ Lz9cb718ae48 -Folder (Lz353b274ecb) -Patterns @('*.log') -Title 'Open a log' -EmptyMsg 'No logs yet. Run an action first.' -Exclude @('*api-report-*.log','*api-finalize-*.log') })
+function Lzd898d02679 {
     if (-not $script:Cfg) { (Show-Msg -Text ('Open a migration job first.')); return }
     $u = 0; [void][int]::TryParse(("$($ctrl.TxtCapUp.Text)").Trim(), [ref]$u);   if ($u -lt 0) { $u = 0 }
     $d = 0; [void][int]::TryParse(("$($ctrl.TxtCapDown.Text)").Trim(), [ref]$d); if ($d -lt 0) { $d = 0 }
@@ -3963,37 +4117,222 @@ function Lzf4c5e18107 {
     } catch {}
     $uTxt = if ($u -gt 0) { "$u Mb/s" } else { 'off' }
     $dTxt = if ($d -gt 0) { "$d Mb/s" } else { 'off' }
-    Lz20a2195fff "Speed limit set: up $uTxt, down $dTxt"
-    Lzc164eb2021 "----- Speed limit set: up $uTxt, down $dTxt (applies immediately to a running upload) -----"
+    Lzcd3b6c7e2b "Speed limit set: up $uTxt, down $dTxt"
+    Lz37b8b56fb4 "----- Speed limit set: up $uTxt, down $dTxt (applies immediately to a running upload) -----"
 }
-$ctrl.BtnApplyCap.Add_Click({ Lzf4c5e18107 })
-$ctrl.TxtCapUp.Add_KeyDown({ param($s,$e) if ($e.Key -eq 'Return') { Lzf4c5e18107 } })
-$ctrl.TxtCapDown.Add_KeyDown({ param($s,$e) if ($e.Key -eq 'Return') { Lzf4c5e18107 } })
-function Lz90c203301c {
+$ctrl.BtnApplyCap.Add_Click({ Lzd898d02679 })
+$ctrl.TxtCapUp.Add_KeyDown({ param($s,$e) if ($e.Key -eq 'Return') { Lzd898d02679 } })
+$ctrl.TxtCapDown.Add_KeyDown({ param($s,$e) if ($e.Key -eq 'Return') { Lzd898d02679 } })
+function Lzb742853198 {
     param([int]$ParentId)
-    try { Get-CimInstance Win32_Process -Filter "ParentProcessId=$ParentId" -ErrorAction SilentlyContinue | ForEach-Object { Lz90c203301c -ParentId ([int]$_.ProcessId) } } catch {}
+    try { Get-CimInstance Win32_Process -Filter "ParentProcessId=$ParentId" -ErrorAction SilentlyContinue | ForEach-Object { Lzb742853198 -ParentId ([int]$_.ProcessId) } } catch {}
     try { Stop-Process -Id $ParentId -Force -ErrorAction SilentlyContinue } catch {}
 }
+function Get-MinOfDay { param([datetime]$D) return ($D.Hour * 60 + $D.Minute) }
+function Format-MinOfDay { param([int]$M) return ('{0:00}:{1:00}' -f [int][math]::Floor($M / 60), ($M % 60)) }
+function ConvertTo-MinOfDay {
+    param([string]$S)
+    if ("$S" -match '^\s*(\d{1,2}):(\d{2})\s*$') { $h = [int]$Matches[1]; $mi = [int]$Matches[2]; if ($h -ge 0 -and $h -le 23 -and $mi -ge 0 -and $mi -le 59) { return ($h * 60 + $mi) } }
+    return $null
+}
+function Test-InWindow {
+    param([int]$M,[int]$From,[int]$To)
+    if ($From -eq $To) { return $true }
+    if ($From -lt $To) { return ($M -ge $From -and $M -lt $To) }
+    return ($M -ge $From -or $M -lt $To)
+}
+function Get-NextWindowOpen { param([int]$FromMin) $now = Get-Date; $t = $now.Date.AddMinutes($FromMin); if ($t -le $now) { $t = $t.AddDays(1) }; return $t }
+function Lzb28e76dc21 {
+    $r = ($script:Proc -and -not $script:Proc.HasExited)
+    $f = ($script:FinProc -and -not $script:FinProc.HasExited)
+    return ($r -or $f)
+}
+function Lz37e163cd26 { param([string]$T) try { $ctrl.BtnSchedule.Content.Text = $T } catch {} }
+function Lz05d119483e {
+    param([string]$Why = '')
+    if ($script:SchedTimer) { try { $script:SchedTimer.Stop() } catch {}; $script:SchedTimer = $null }
+    $script:Sched = $null
+    Lz37e163cd26 'Schedule for later / overnight...'
+    if ($Why) { Lzcd3b6c7e2b $Why }
+}
+function Lz5ba6033de3 {
+    try { $p = Join-Path (Lz4058025c59) 'lastrun-outcome.json'; if (Test-Path $p) { return (Get-Content $p -Raw | ConvertFrom-Json) } } catch {}
+    return $null
+}
+function Lze9c94822ad {
+    if (-not $script:Proc -or $script:Proc.HasExited) { return }
+    $script:QuietPausing = $true
+    $ctrl.BtnStop.IsEnabled = $false
+    Lz37b8b56fb4 "----- Quiet hours reached at $((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')): pausing the copy. Files already uploaded are kept. -----"
+    Lzcd3b6c7e2b 'Quiet hours: pausing until the next window...'
+    try { Lzb742853198 -ParentId ([int]$script:Proc.Id) } catch {}
+    Lz62d9146760 -Status Cancelled -Note 'Finalising for quiet hours...' -OnDone {
+        try { Lz37b8b56fb4 '----- Paused for quiet hours. It will resume as a Sync at the next window while this app stays open. -----' } catch {}
+    }
+}
+function Lz2eeeb10047 {
+    param([string[]]$RunArgs,[string]$Label)
+    Lz37b8b56fb4 "----- Scheduled: starting '$Label' at $((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')) -----"
+    Lz71cb2eceac -EngineArgs $RunArgs -Label $Label
+    return ($script:Proc -and -not $script:Proc.HasExited)
+}
+function Lzc6e43a28f3 { param([string]$Status)
+    $msg = if ($Status -eq 'COMPLETED') { 'The scheduled migration has completed. Open the report or issue a completion certificate from the tiles.' }
+           else { "The scheduled run has finished (status: $Status). Open the report for detail." }
+    (Show-Msg -Text ($msg) -Caption ('Scheduled run') -Icon ('Information')) | Out-Null
+}
+function Lzb91a675721 {
+    if (-not $script:Sched) { return }
+    $s = $script:Sched
+    $now = Get-Date
+    $m = Get-MinOfDay $now
+    $busy = Lzb28e76dc21
+    switch ("$($s.State)") {
+        'waiting' {
+            if ($now -ge $s.StartAt -and -not $busy) {
+                if ($s.Mode -eq 'window' -and -not (Test-InWindow $m $s.FromMin $s.ToMin)) { $s.State = 'paused' }
+                elseif (Lz2eeeb10047 -RunArgs $s.Args -Label $s.Label) { $s.State = 'running'; $s.Launches++ }
+                else { Lz05d119483e -Why 'The scheduled run could not start (see the message). Schedule cancelled.' }
+            } else {
+                $left = $s.StartAt - $now; if ($left.Ticks -lt 0) { $left = [TimeSpan]::Zero }
+                Lz37e163cd26 ("Scheduled: starts $($s.StartAt.ToString('ddd HH:mm')) ($(Format-Span $left) to go) - click to cancel")
+            }
+        }
+        'running' {
+            if (-not $busy) {
+                $oc = Lz5ba6033de3; $status = if ($oc) { "$($oc.Status)" } else { '' }
+                if ($s.Mode -eq 'once') { Lz05d119483e -Why 'Scheduled run finished.'; Lzc6e43a28f3 $status }
+                elseif ($status -eq 'COMPLETED') { Lz05d119483e -Why 'Scheduled migration completed.'; Lzc6e43a28f3 $status }
+                else { $s.State = 'paused' }
+            } elseif ($s.Mode -eq 'window' -and -not (Test-InWindow $m $s.FromMin $s.ToMin)) {
+                Lze9c94822ad; $s.State = 'paused'
+            } else {
+                $until = if ($s.Mode -eq 'window') { " (until $(Format-MinOfDay $s.ToMin))" } else { '' }
+                Lz37e163cd26 ("Scheduled: running$until - click to cancel")
+            }
+        }
+        'paused' {
+            if ((Test-InWindow $m $s.FromMin $s.ToMin) -and -not $busy) {
+                if (Lz2eeeb10047 -RunArgs @('-Action','Transfer','-Mode','Delta','-DeltaMode','AddMissing','-Execute') -Label 'Sync new and changed') { $s.State = 'running'; $s.Launches++ }
+            } else {
+                $nf = Get-NextWindowOpen $s.FromMin
+                Lz37e163cd26 ("Scheduled: waiting for the next window ($($nf.ToString('ddd HH:mm'))) - click to cancel")
+            }
+        }
+    }
+}
+function Lz63d77b969d {
+    Add-Type -AssemblyName PresentationFramework | Out-Null
+    [xml]$sx = @"
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Schedule the migration" Width="540" SizeToContent="Height" FontFamily="Segoe UI" FontSize="13"
+        WindowStartupLocation="CenterScreen" ResizeMode="NoResize" Background="White">
+  <StackPanel Margin="18">
+    <TextBlock TextWrapping="Wrap" Foreground="#475467" Margin="0,0,0,12"
+      Text="Start the migration at a time you choose, or only during a nightly window. Leave this app open and the computer awake: the schedule runs here, it is not a Windows scheduled task."/>
+    <RadioButton x:Name="RbOnce" GroupName="Mode" IsChecked="True" Margin="0,2,0,2" Content="Run once, starting at:"/>
+    <StackPanel Orientation="Horizontal" Margin="22,0,0,8">
+      <TextBox x:Name="TxtStart" Width="70" Text="22:00"/>
+      <TextBlock Text="  24-hour. Today, or the next day if that time has passed." VerticalAlignment="Center" Foreground="#667085"/>
+    </StackPanel>
+    <RadioButton x:Name="RbWindow" GroupName="Mode" Margin="0,2,0,2" Content="Run only during a nightly window (quiet hours):"/>
+    <StackPanel Orientation="Horizontal" Margin="22,0,0,8">
+      <TextBlock Text="From" VerticalAlignment="Center"/>
+      <TextBox x:Name="TxtFrom" Width="64" Margin="6,0" Text="22:00"/>
+      <TextBlock Text="to" VerticalAlignment="Center"/>
+      <TextBox x:Name="TxtTo" Width="64" Margin="6,0" Text="06:00"/>
+      <TextBlock Text="each night, until done" VerticalAlignment="Center" Foreground="#667085"/>
+    </StackPanel>
+    <TextBlock Text="Which copy to run:" FontWeight="SemiBold" Margin="0,8,0,3"/>
+    <RadioButton x:Name="RbUpload" GroupName="Run" IsChecked="True" Content="Upload all files (first full migration)"/>
+    <RadioButton x:Name="RbSync" GroupName="Run" Margin="0,3,0,0" Content="Sync new and changed (safe top-up, never overwrites newer)"/>
+    <TextBlock TextWrapping="Wrap" Foreground="#667085" FontSize="12" Margin="0,6,0,0"
+      Text="In a nightly window the first night uses your choice above; each following night resumes as a Sync, so nothing already copied is redone."/>
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+      <Button x:Name="BtnOk" Content="Schedule" Padding="18,5" Margin="0,0,8,0" IsDefault="True"/>
+      <Button x:Name="BtnCancel" Content="Cancel" Padding="18,5" IsCancel="True"/>
+    </StackPanel>
+  </StackPanel>
+</Window>
+"@
+    $w = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $sx))
+    Lzbc22fda021 $w
+    $get = { param($n) $w.FindName($n) }
+    $script:SchedSpec = $null; $script:SchedWin = $w
+    (& $get 'BtnOk').Add_Click({
+        $mode = if ((& $get 'RbWindow').IsChecked) { 'window' } else { 'once' }
+        $run  = if ((& $get 'RbSync').IsChecked) { 'Sync' } else { 'Upload' }
+        if ($mode -eq 'once') {
+            $sm = ConvertTo-MinOfDay (& $get 'TxtStart').Text
+            if ($null -eq $sm) { (Show-Msg -Text ('Enter the start time as HH:mm in 24-hour form, for example 22:00.') -Caption ('Start time') -Icon ('Warning')) | Out-Null; return }
+            $script:SchedSpec = @{ Mode='once'; StartMin=$sm; FromMin=$null; ToMin=$null; Run=$run }
+        } else {
+            $fm = ConvertTo-MinOfDay (& $get 'TxtFrom').Text; $tm = ConvertTo-MinOfDay (& $get 'TxtTo').Text
+            if ($null -eq $fm -or $null -eq $tm) { (Show-Msg -Text ('Enter both window times as HH:mm in 24-hour form, for example 22:00 and 06:00.') -Caption ('Quiet hours') -Icon ('Warning')) | Out-Null; return }
+            if ($fm -eq $tm) { (Show-Msg -Text ('The window start and end are the same, which means all day. Set different times, for example 22:00 to 06:00.') -Caption ('Quiet hours') -Icon ('Warning')) | Out-Null; return }
+            $script:SchedSpec = @{ Mode='window'; StartMin=$fm; FromMin=$fm; ToMin=$tm; Run=$run }
+        }
+        $script:SchedWin.DialogResult = $true
+    })
+    [void]$w.ShowDialog()
+    return $script:SchedSpec
+}
+$ctrl.BtnSchedule.Add_Click({
+    if ($script:Sched) {
+        if ((Show-Msg -Text ("A schedule is set:" + [Environment]::NewLine + $script:Sched.Summary + [Environment]::NewLine + [Environment]::NewLine + "Cancel it?") -Caption ('Scheduled run') -Buttons ('YesNo') -Icon ('Question')) -eq 'Yes') { Lz05d119483e -Why 'Schedule cancelled.' }
+        return
+    }
+    if (-not $script:JobOpen) { (Show-Msg -Text ('Open or create a migration job first.')) | Out-Null; return }
+    if (Lzb28e76dc21) { (Show-Msg -Text ('A run is in progress. Wait for it to finish, then set a schedule.') -Caption ('Cannot schedule now') -Icon ('Warning')) | Out-Null; return }
+    if (-not (Save-Mapping)) { return }
+    $mappedCount = @($script:Projects | Where-Object { $script:Map.ContainsKey($_.Id) }).Count
+    if ($mappedCount -eq 0) { (Show-Msg -Text ('Set a destination on at least one project first (Apply to this project), then schedule.') -Caption ('Nothing to schedule') -Icon ('Warning')) | Out-Null; return }
+    $spec = Lz63d77b969d
+    if (-not $spec) { return }
+    if (-not (Lz112b6da7fc)) { return }
+    if (-not (Lzcd57a92bb9)) { return }
+    $firstArgs  = if ($spec.Run -eq 'Upload') { @('-Action','Transfer','-Mode','FirstPass','-Execute') } else { @('-Action','Transfer','-Mode','Delta','-DeltaMode','AddMissing','-Execute') }
+    $firstLabel = if ($spec.Run -eq 'Upload') { 'Upload all files' } else { 'Sync new and changed' }
+    $now = Get-Date
+    if ($spec.Mode -eq 'once') {
+        $today = $now.Date.AddMinutes($spec.StartMin)
+        $startAt = if ($today -gt $now.AddSeconds(20)) { $today } else { $today.AddDays(1) }
+        $summary = "$firstLabel at $($startAt.ToString('ddd dd MMM HH:mm'))"
+        $script:Sched = @{ Mode='once'; StartAt=$startAt; FromMin=0; ToMin=0; Args=$firstArgs; Label=$firstLabel; State='waiting'; Summary=$summary; Launches=0 }
+    } else {
+        $todayFrom = $now.Date.AddMinutes($spec.FromMin)
+        $startAt = if (Test-InWindow (Get-MinOfDay $now) $spec.FromMin $spec.ToMin) { $now } elseif ($todayFrom -gt $now) { $todayFrom } else { $todayFrom.AddDays(1) }
+        $summary = "$firstLabel nightly $(Format-MinOfDay $spec.FromMin)-$(Format-MinOfDay $spec.ToMin), from $($startAt.ToString('ddd dd MMM HH:mm'))"
+        $script:Sched = @{ Mode='window'; StartAt=$startAt; FromMin=$spec.FromMin; ToMin=$spec.ToMin; Args=$firstArgs; Label=$firstLabel; State='waiting'; Summary=$summary; Launches=0 }
+    }
+    $script:SchedTimer = New-Object System.Windows.Threading.DispatcherTimer
+    $script:SchedTimer.Interval = [TimeSpan]::FromSeconds(20)
+    $script:SchedTimer.Add_Tick({ try { Lzb91a675721 } catch {} })
+    $script:SchedTimer.Start()
+    try { Lzb91a675721 } catch {}
+    (Show-Msg -Text ("Scheduled: " + $script:Sched.Summary + "." + [Environment]::NewLine + [Environment]::NewLine + "Leave this app open and the computer awake. Click the schedule button again at any time to cancel.") -Caption ('Scheduled') -Icon ('Information')) | Out-Null
+})
 $ctrl.BtnStop.Add_Click({
     if (-not $script:Proc -or $script:Proc.HasExited) { $ctrl.BtnStop.IsEnabled = $false; return }
     if ((Show-Msg -Text ("Stop the current copy?`n`nFiles already uploaded and verified are kept. You can carry on later with 'Sync new and changed'.") -Caption ('Confirm stop') -Buttons ('YesNo') -Icon ('Warning')) -ne 'Yes') { return }
+    if ($script:Sched) { Lz05d119483e -Why 'Schedule cancelled (you stopped the run).' }
     $script:Stopping = $true
     $ctrl.BtnStop.IsEnabled = $false
     $stamp = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
-    Lzc164eb2021 "----- STOP requested by user at $stamp -----"
-    Lz20a2195fff "Stopping $($script:CurLabel)..."
-    try { Lz90c203301c -ParentId ([int]$script:Proc.Id) } catch {}
+    Lz37b8b56fb4 "----- STOP requested by user at $stamp -----"
+    Lzcd3b6c7e2b "Stopping $($script:CurLabel)..."
+    try { Lzb742853198 -ParentId ([int]$script:Proc.Id) } catch {}
     try {
         if ($script:Cfg -and $script:Cfg.run.logRoot -and (Test-Path $script:Cfg.run.logRoot)) {
             $lf = Get-ChildItem (Join-Path $script:Cfg.run.logRoot '*.log') -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
             if ($lf) { Add-Content -Path $lf.FullName -Value ((Get-Date -Format 'o') + " [WARN] STOPPED BY USER during '$($script:CurLabel)'. Files already uploaded and verified are recorded; resume with 'Sync new and changed'.") }
         }
     } catch {}
-    Lz84e18f3b3f -Status Cancelled -Note 'Finalising the cancelled run...' -OnDone {
-        try { Lzc164eb2021 "----- Cancellation recorded. A report has been saved; click 'Open report' to view it. -----" } catch {}
+    Lz62d9146760 -Status Cancelled -Note 'Finalising the cancelled run...' -OnDone {
+        try { Lz37b8b56fb4 "----- Cancellation recorded. A report has been saved; click 'Open report' to view it. -----" } catch {}
     }
 })
-function Lz77b504bc3b {
+function Lz61be49dbca {
     [xml]$rx = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Resume the paused upload" Width="600" SizeToContent="Height" MaxHeight="760" FontFamily="Segoe UI" FontSize="13"
@@ -4010,7 +4349,7 @@ function Lz77b504bc3b {
 </Window>
 "@
     $w = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $rx))
-    Lz7adedfce11 $w
+    Lzbc22fda021 $w
     $body = $w.FindName('Body')
     $intro = New-Object System.Windows.Controls.TextBlock
     $intro.TextWrapping = 'Wrap'; $intro.Foreground = '#1F2937'; $intro.LineHeight = 19; $intro.Margin = '0,0,0,12'
@@ -4051,7 +4390,7 @@ if ($ctrl.BtnPause) { $ctrl.BtnPause.Add_Click({
         $mi = [array]::IndexOf($rargs, '-Mode')
         $rmode = if ($mi -ge 0 -and ($mi + 1) -lt $rargs.Count) { "$($rargs[$mi + 1])" } else { '' }
         if (($rargs -contains '-Execute') -and $rmode -eq 'FirstPass') {
-            $c = Lz77b504bc3b
+            $c = Lz61be49dbca
             if (-not $c) { return }
             if ($c -eq 'Carry') {
                 $rargs = @('-Action','Transfer','-Mode','Delta','-DeltaMode','NewerWins','-Execute')
@@ -4062,43 +4401,43 @@ if ($ctrl.BtnPause) { $ctrl.BtnPause.Add_Click({
         }
         if ($rargs -notcontains '-UseEnumCache') { $rargs += '-UseEnumCache' }
         $script:Paused = $false; $ctrl.BtnPauseTitle.Text = 'Pause'
-        Lzf66d8fffa0 -EngineArgs $rargs -Label $rlabel
+        Lz71cb2eceac -EngineArgs $rargs -Label $rlabel
         return
     }
     if (-not $script:Proc -or $script:Proc.HasExited) { $ctrl.BtnPause.IsEnabled = $false; return }
     $script:Paused = $true; $ctrl.BtnPauseTitle.Text = 'Resume'; $ctrl.BtnStop.IsEnabled = $false
     $stamp = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
-    Lzc164eb2021 "----- PAUSE requested by user at $stamp -----"
-    Lz20a2195fff "Pausing $($script:CurLabel)..."
-    try { Lz90c203301c -ParentId ([int]$script:Proc.Id) } catch {}
+    Lz37b8b56fb4 "----- PAUSE requested by user at $stamp -----"
+    Lzcd3b6c7e2b "Pausing $($script:CurLabel)..."
+    try { Lzb742853198 -ParentId ([int]$script:Proc.Id) } catch {}
     try {
         if ($script:Cfg -and $script:Cfg.run.logRoot -and (Test-Path $script:Cfg.run.logRoot)) {
             $lf = Get-ChildItem (Join-Path $script:Cfg.run.logRoot '*.log') -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
             if ($lf) { Add-Content -Path $lf.FullName -Value ((Get-Date -Format 'o') + " [WARN] PAUSED BY USER during '$($script:CurLabel)'. Files already uploaded and verified are recorded; Resume continues with Sync.") }
         }
     } catch {}
-    Lz84e18f3b3f -Status Cancelled -Note 'Finalising the paused run...' -OnDone {
-        try { Lzc164eb2021 "----- Paused. What had already uploaded is saved. Click Resume to carry on. -----" } catch {}
+    Lz62d9146760 -Status Cancelled -Note 'Finalising the paused run...' -OnDone {
+        try { Lz37b8b56fb4 "----- Paused. What had already uploaded is saved. Click Resume to carry on. -----" } catch {}
     }
 }) }
 $script:DattoDomains = @(
     'eu.workplace.datto.com','us.workplace.datto.com','ca.workplace.datto.com','au.workplace.datto.com',
     'us.fileprotection.datto.com','eu.fileprotection.datto.com','ca.fileprotection.datto.com','au.fileprotection.datto.com'
 )
-function Lz7c66cc601c { param([string]$Domain,[string]$Cell) if (-not $Domain -or -not "$Cell".Trim()) { return '' }; return "https://$Domain/$("$Cell".Trim())/api/v1" }
-function Lz9a789facb7 {
+function Lzd44755ef52 { param([string]$Domain,[string]$Cell) if (-not $Domain -or -not "$Cell".Trim()) { return '' }; return "https://$Domain/$("$Cell".Trim())/api/v1" }
+function Lz67a6f15e0c {
     param([string]$Url)
     if ($Url -match '^https?://([^/]+)/([^/]+)/api/v1/?$') { return @{ Domain=$Matches[1]; Cell=$Matches[2] } }
     return @{ Domain=''; Cell='' }
 }
-function Lz7cca07f98e {
+function Lz74f42d6fa7 {
     param([string]$SharePointRoot)
     $r = "$SharePointRoot".TrimEnd('/')
     if ($r -notmatch '^https?://([^/.]+)\.sharepoint\.com') { return $null }
     $tenant = $Matches[1]
     return @{ OneDriveHostUrl = "https://$tenant-my.sharepoint.com"; TeamSiteBaseUrl = "$r/sites"; DefaultSiteUrl = "$r/sites/projects" }
 }
-function Lzd971eea7df {
+function Lz6b5a202c07 {
     param($Org)
     try {
         $doms = @(@($Org.value)[0].verifiedDomains)
@@ -4110,22 +4449,22 @@ function Lzd971eea7df {
     } catch {}
     return ''
 }
-function Lz92752b81b9 {
+function Lzf35a568d05 {
     param([string]$TenantId,[string]$ClientId,[string]$Thumbprint,[string]$CertStore)
-    return (Lzb942e9f3c1 -TenantId $TenantId -ClientId $ClientId -Thumbprint $Thumbprint -CertStore $CertStore).Token
+    return (Lz0099e4fc5e -TenantId $TenantId -ClientId $ClientId -Thumbprint $Thumbprint -CertStore $CertStore).Token
 }
-function Lz83927bb7fe {
+function Lz597f1b2c26 {
     Add-Type -AssemblyName PresentationFramework | Out-Null
     $win2 = New-Object System.Windows.Window
-    Lz7adedfce11 $win2
+    Lzbc22fda021 $win2
     $win2.Title='API settings'; $win2.SizeToContent='Height'; $win2.Width=560; $win2.WindowStartupLocation='CenterScreen'; $win2.ResizeMode='NoResize'
     $sv = New-Object System.Windows.Controls.ScrollViewer; $sv.VerticalScrollBarVisibility='Auto'; $sv.MaxHeight=720
     $root = New-Object System.Windows.Controls.StackPanel; $root.Margin='16'; $sv.Content=$root; $win2.Content=$sv
     $intro=New-Object System.Windows.Controls.TextBlock
     $intro.Text='Connection settings for this installation. Stored on this computer (registry and certificate store), never in the migration files. Set these once per machine.'
     $intro.TextWrapping='Wrap'; $intro.Foreground='Gray'; $intro.Margin='0,0,0,6'; [void]$root.Children.Add($intro)
-    function Lzb9da3001de { param($Text) $h=New-Object System.Windows.Controls.TextBlock; $h.Text=$Text; $h.FontWeight='Bold'; $h.Margin='0,12,0,4'; [void]$root.Children.Add($h) }
-    function Lzf3f41ae391 { param($Label,$Control,$Info)
+    function Lz73426b539e { param($Text) $h=New-Object System.Windows.Controls.TextBlock; $h.Text=$Text; $h.FontWeight='Bold'; $h.Margin='0,12,0,4'; [void]$root.Children.Add($h) }
+    function Lz4b83d02a7c { param($Label,$Control,$Info)
         $g=New-Object System.Windows.Controls.Grid
         foreach ($w in '150','380','40') { $c=New-Object System.Windows.Controls.ColumnDefinition; $c.Width=$w; $g.ColumnDefinitions.Add($c) }
         $l=New-Object System.Windows.Controls.TextBlock; $l.Text=$Label; $l.VerticalAlignment='Center'; $l.Margin='0,3,8,3'; $l.TextWrapping='Wrap'
@@ -4139,40 +4478,40 @@ function Lz83927bb7fe {
         }
         [void]$root.Children.Add($g); return $Control
     }
-    function Lzed25206c6b { param($Text) $t=New-Object System.Windows.Controls.TextBox; $t.Margin='0,3,0,3'; $t.Text="$Text"; return $t }
-    Lzb9da3001de 'Datto Workplace'
+    function Lza4360995e4 { param($Text) $t=New-Object System.Windows.Controls.TextBox; $t.Margin='0,3,0,3'; $t.Text="$Text"; return $t }
+    Lz73426b539e 'Datto Workplace'
     $cmbDom = New-Object System.Windows.Controls.ComboBox; $cmbDom.Margin='0,3,0,3'
     foreach ($d in $script:DattoDomains) { [void]$cmbDom.Items.Add($d) }
-    $parts = Lz9a789facb7 ([string](Get-RegSetting 'DattoEndpointUrl'))
+    $parts = Lz67a6f15e0c ([string](Get-RegSetting 'DattoEndpointUrl'))
     if ($parts.Domain) { $cmbDom.SelectedItem = $parts.Domain } else { $cmbDom.SelectedIndex = 0 }
-    [void](Lzf3f41ae391 'Region (domain)' $cmbDom 'Your Datto Workplace region. If the web address you use for Datto starts with "eu", pick the eu one; "us", pick us, and so on. If you are not sure, ask whoever set up your Datto account.')
-    $tbCell = Lzf3f41ae391 'Cell (number)' (Lzed25206c6b ($parts.Cell)) 'A small number that is part of your Datto web address (for example the 2 in .../2/api/v1). You can see it on the Datto API page, or ask your Datto administrator.'
-    $tbDId  = Lzf3f41ae391 'Datto Client ID' (Lzed25206c6b ([string](Get-RegSetting 'DattoClientId'))) 'The username for the Datto connection. In the Datto Workplace admin portal you create an "API integration", which gives you a Client ID and a Secret. This is the Client ID.'
+    [void](Lz4b83d02a7c 'Region (domain)' $cmbDom 'Your Datto Workplace region. If the web address you use for Datto starts with "eu", pick the eu one; "us", pick us, and so on. If you are not sure, ask whoever set up your Datto account.')
+    $tbCell = Lz4b83d02a7c 'Cell (number)' (Lza4360995e4 ($parts.Cell)) 'A small number that is part of your Datto web address (for example the 2 in .../2/api/v1). You can see it on the Datto API page, or ask your Datto administrator.'
+    $tbDId  = Lz4b83d02a7c 'Datto Client ID' (Lza4360995e4 ([string](Get-RegSetting 'DattoClientId'))) 'The username for the Datto connection. In the Datto Workplace admin portal you create an "API integration", which gives you a Client ID and a Secret. This is the Client ID.'
     $pbSec  = New-Object System.Windows.Controls.PasswordBox; $pbSec.Margin='0,3,0,3'
-    [void](Lzf3f41ae391 'Datto Secret' $pbSec 'The password that goes with the Datto Client ID, from the same Datto API integration. Treat it like a password. Leave blank to keep the one already saved.')
+    [void](Lz4b83d02a7c 'Datto Secret' $pbSec 'The password that goes with the Datto Client ID, from the same Datto API integration. Treat it like a password. Leave blank to keep the one already saved.')
     $secNote=New-Object System.Windows.Controls.TextBlock; $secNote.Text='Leave the secret blank to keep the current one.'; $secNote.Foreground='Gray'; $secNote.FontSize=11; $secNote.Margin='150,0,0,0'; [void]$root.Children.Add($secNote)
-    Lzb9da3001de 'Microsoft 365'
-    $tbTid = Lzf3f41ae391 'Tenant ID' (Lzed25206c6b ([string](Get-RegSetting 'TenantId'))) 'Your Microsoft 365 organisation''s unique ID (a long code with dashes). Find it at entra.microsoft.com (Microsoft Entra admin center) on the Overview page, shown as "Tenant ID". Or ask whoever manages your Microsoft 365.'
-    $tbApp = Lzf3f41ae391 'App (Client) ID' (Lzed25206c6b ([string](Get-RegSetting 'GraphClientId'))) 'The ID of the app registration this tool signs in as. In entra.microsoft.com go to App registrations, open the app created for this migration, and copy "Application (client) ID".'
-    Lzb9da3001de 'Certificate (sign-in to Microsoft 365)'
+    Lz73426b539e 'Microsoft 365'
+    $tbTid = Lz4b83d02a7c 'Tenant ID' (Lza4360995e4 ([string](Get-RegSetting 'TenantId'))) 'Your Microsoft 365 organisation''s unique ID (a long code with dashes). Find it at entra.microsoft.com (Microsoft Entra admin center) on the Overview page, shown as "Tenant ID". Or ask whoever manages your Microsoft 365.'
+    $tbApp = Lz4b83d02a7c 'App (Client) ID' (Lza4360995e4 ([string](Get-RegSetting 'GraphClientId'))) 'The ID of the app registration this tool signs in as. In entra.microsoft.com go to App registrations, open the app created for this migration, and copy "Application (client) ID".'
+    Lz73426b539e 'Certificate (sign-in to Microsoft 365)'
     $lblThumb = New-Object System.Windows.Controls.TextBlock; $lblThumb.VerticalAlignment='Center'
     $curThumb = [string](Get-RegSetting 'CertThumbprint'); $lblThumb.Text = if ($curThumb) { $curThumb } else { '(none installed)' }
-    [void](Lzf3f41ae391 'Thumbprint' $lblThumb 'A fingerprint of the sign-in certificate. You do not type this: it fills in automatically when you install the .pfx file below.')
-    $tbPfx = Lzf3f41ae391 '.pfx file' (Lzed25206c6b '') 'The certificate file (its name ends in .pfx) that lets the tool sign in to Microsoft 365. Your IT contact provides it. Click Browse to pick it.'
+    [void](Lz4b83d02a7c 'Thumbprint' $lblThumb 'A fingerprint of the sign-in certificate. You do not type this: it fills in automatically when you install the .pfx file below.')
+    $tbPfx = Lz4b83d02a7c '.pfx file' (Lza4360995e4 '') 'The certificate file (its name ends in .pfx) that lets the tool sign in to Microsoft 365. Your IT contact provides it. Click Browse to pick it.'
     $btnBrowse = New-Object System.Windows.Controls.Button; $btnBrowse.Content='Browse...'; $btnBrowse.Padding='8,2'
     $pbPfx = New-Object System.Windows.Controls.PasswordBox; $pbPfx.Margin='0,3,0,3'
-    [void](Lzf3f41ae391 '.pfx password' $pbPfx 'The password for the .pfx file, supplied together with the certificate by your IT contact.')
+    [void](Lz4b83d02a7c '.pfx password' $pbPfx 'The password for the .pfx file, supplied together with the certificate by your IT contact.')
     $btnInstall = New-Object System.Windows.Controls.Button; $btnInstall.Content='Install certificate'; $btnInstall.Padding='8,3'
     $rowCert=New-Object System.Windows.Controls.StackPanel; $rowCert.Orientation='Horizontal'; $rowCert.Margin='150,3,0,3'
     [void]$rowCert.Children.Add($btnBrowse); [void]$rowCert.Children.Add($btnInstall); [void]$root.Children.Add($rowCert)
     $lblCert=New-Object System.Windows.Controls.TextBlock; $lblCert.Foreground='Gray'; $lblCert.TextWrapping='Wrap'; $lblCert.Margin='150,2,0,0'; [void]$root.Children.Add($lblCert)
-    Lzb9da3001de 'SharePoint and OneDrive'
+    Lz73426b539e 'SharePoint and OneDrive'
     $spNote=New-Object System.Windows.Controls.TextBlock; $spNote.Text='Tip: the "Auto-detect URLs" button below fills these in for you once the tenant and certificate are set.'; $spNote.Foreground='Gray'; $spNote.FontSize=11; $spNote.TextWrapping='Wrap'; $spNote.Margin='0,0,0,4'; [void]$root.Children.Add($spNote)
-    $tbSp  = Lzf3f41ae391 'SharePoint root URL' (Lzed25206c6b ([string](Get-RegSetting 'SharePointRootUrl'))) 'Your SharePoint web address, for example https://yourcompany.sharepoint.com. It is the address you see when you open SharePoint in a browser. Auto-detect can fill this for you.'
-    $tbOd  = Lzf3f41ae391 'OneDrive host URL'   (Lzed25206c6b ([string](Get-RegSetting 'OneDriveHostUrl'))) 'Your OneDrive web address. It is usually your SharePoint address with "-my" added, for example https://yourcompany-my.sharepoint.com. Auto-detect fills it.'
-    $tbTs  = Lzf3f41ae391 'Team site base URL'  (Lzed25206c6b ([string](Get-RegSetting 'TeamSiteBaseUrl'))) 'Where your SharePoint team sites live, usually your SharePoint address followed by /sites. Auto-detect fills it.'
-    $tbDef = Lzf3f41ae391 'Default site URL'    (Lzed25206c6b ([string](Get-RegSetting 'DefaultSiteUrl'))) 'The SharePoint site suggested by default when you set up a new project. Auto-detect fills it, and you can change it for each project.'
-    $tbUpn = Lzf3f41ae391 'Email / UPN domain'  (Lzed25206c6b ([string](Get-RegSetting 'UpnDomain'))) 'Your organisation''s email domain, for example @yourcompany.com. It is used to find each person''s OneDrive. Auto-detect can fill it if the permission is granted; otherwise type it.'
+    $tbSp  = Lz4b83d02a7c 'SharePoint root URL' (Lza4360995e4 ([string](Get-RegSetting 'SharePointRootUrl'))) 'Your SharePoint web address, for example https://yourcompany.sharepoint.com. It is the address you see when you open SharePoint in a browser. Auto-detect can fill this for you.'
+    $tbOd  = Lz4b83d02a7c 'OneDrive host URL'   (Lza4360995e4 ([string](Get-RegSetting 'OneDriveHostUrl'))) 'Your OneDrive web address. It is usually your SharePoint address with "-my" added, for example https://yourcompany-my.sharepoint.com. Auto-detect fills it.'
+    $tbTs  = Lz4b83d02a7c 'Team site base URL'  (Lza4360995e4 ([string](Get-RegSetting 'TeamSiteBaseUrl'))) 'Where your SharePoint team sites live, usually your SharePoint address followed by /sites. Auto-detect fills it.'
+    $tbDef = Lz4b83d02a7c 'Default site URL'    (Lza4360995e4 ([string](Get-RegSetting 'DefaultSiteUrl'))) 'The SharePoint site suggested by default when you set up a new project. Auto-detect fills it, and you can change it for each project.'
+    $tbUpn = Lz4b83d02a7c 'Email / UPN domain'  (Lza4360995e4 ([string](Get-RegSetting 'UpnDomain'))) 'Your organisation''s email domain, for example @yourcompany.com. It is used to find each person''s OneDrive. Auto-detect can fill it if the permission is granted; otherwise type it.'
     $btnAuto = New-Object System.Windows.Controls.Button; $btnAuto.Content='Auto-detect URLs'; $btnAuto.Padding='8,3'; $btnAuto.Margin='150,4,0,0'; $btnAuto.HorizontalAlignment='Left'; [void]$root.Children.Add($btnAuto)
     $lblAuto=New-Object System.Windows.Controls.TextBlock; $lblAuto.Foreground='Gray'; $lblAuto.TextWrapping='Wrap'; $lblAuto.Margin='150,2,0,0'; [void]$root.Children.Add($lblAuto)
     $btnRow=New-Object System.Windows.Controls.DockPanel; $btnRow.Margin='0,16,0,0'; $btnRow.LastChildFill=$false
@@ -4206,7 +4545,7 @@ function Lz83927bb7fe {
             $th=@($imp)[0].Thumbprint
             $have=if ($th) { Get-ChildItem "Cert:\CurrentUser\My\$th" -ErrorAction SilentlyContinue } else { $null }
             if ($have -and $have.HasPrivateKey) {
-                Lz72fd4a5484 -Name 'CertThumbprint' -Value $th
+                Lz555805c62d -Name 'CertThumbprint' -Value $th
                 $script:AS.lblThumb.Text=$th; $script:AS.lblCert.Text="Installed. Thumbprint $th saved."; $script:AS.lblCert.Foreground='Green'
             } else { $script:AS.lblCert.Text='Imported, but no private key found on the certificate.'; $script:AS.lblCert.Foreground='Red' }
         } catch { $script:AS.lblCert.Text="Could not install: $($_.Exception.Message)"; $script:AS.lblCert.Foreground='Red' }
@@ -4216,13 +4555,13 @@ function Lz83927bb7fe {
         try {
             $tid="$($script:AS.tbTid.Text)".Trim(); $app="$($script:AS.tbApp.Text)".Trim(); $th=[string](Get-RegSetting 'CertThumbprint')
             if (-not $tid -or -not $app -or -not $th) { $script:AS.lblAuto.Text='Enter Tenant ID and App ID, and install the certificate first.'; $script:AS.lblAuto.Foreground='Red'; return }
-            $tok = Lz92752b81b9 -TenantId $tid -ClientId $app -Thumbprint $th
+            $tok = Lzf35a568d05 -TenantId $tid -ClientId $app -Thumbprint $th
             $rootSite = Invoke-RestMethod -Method GET -Uri 'https://graph.microsoft.com/v1.0/sites/root' -Headers @{ Authorization="Bearer $tok" }
             $sp = "$($rootSite.webUrl)".TrimEnd('/'); $script:AS.tbSp.Text=$sp
-            $der = Lz7cca07f98e $sp
+            $der = Lz74f42d6fa7 $sp
             if ($der) { $script:AS.tbOd.Text=$der.OneDriveHostUrl; $script:AS.tbTs.Text=$der.TeamSiteBaseUrl; $script:AS.tbDef.Text=$der.DefaultSiteUrl }
             $upnMsg=''
-            try { $org=Invoke-RestMethod -Method GET -Uri 'https://graph.microsoft.com/v1.0/organization' -Headers @{ Authorization="Bearer $tok" }; $u=Lzd971eea7df $org; if ($u) { $script:AS.tbUpn.Text=$u } else { $upnMsg=' (email domain not found)' } }
+            try { $org=Invoke-RestMethod -Method GET -Uri 'https://graph.microsoft.com/v1.0/organization' -Headers @{ Authorization="Bearer $tok" }; $u=Lz6b5a202c07 $org; if ($u) { $script:AS.tbUpn.Text=$u } else { $upnMsg=' (email domain not found)' } }
             catch { $upnMsg=' (email domain needs Domain.Read.All or Organization.Read.All; enter it by hand)' }
             $script:AS.lblAuto.Text="Detected from tenant. Review the values, then Save.$upnMsg"; $script:AS.lblAuto.Foreground='Green'
         } catch { $script:AS.lblAuto.Text="Auto-detect failed: $($_.Exception.Message)"; $script:AS.lblAuto.Foreground='Red' }
@@ -4231,8 +4570,8 @@ function Lz83927bb7fe {
         $script:AS.lblStatus.Text='Testing...'; $script:AS.lblStatus.Foreground='Gray'
         $msgs=@()
         try {
-            $ep = Lz7c66cc601c $script:AS.cmbDom.SelectedItem $script:AS.tbCell.Text
-            $secPlain = if ($script:AS.pbSec.Password) { $script:AS.pbSec.Password } else { Lz26dbd273a2 }
+            $ep = Lzd44755ef52 $script:AS.cmbDom.SelectedItem $script:AS.tbCell.Text
+            $secPlain = if ($script:AS.pbSec.Password) { $script:AS.pbSec.Password } else { Lzcc6218e58d }
             if (-not $ep -or -not $script:AS.tbDId.Text -or -not $secPlain) { $msgs += 'Datto: missing endpoint, ID or secret.' }
             else {
                 $hdr=@{ Authorization='Basic '+[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("$($script:AS.tbDId.Text.Trim()):$secPlain")) }
@@ -4243,25 +4582,25 @@ function Lz83927bb7fe {
         try {
             $tid="$($script:AS.tbTid.Text)".Trim(); $app="$($script:AS.tbApp.Text)".Trim(); $th=[string](Get-RegSetting 'CertThumbprint')
             if (-not $tid -or -not $app -or -not $th) { $msgs += 'Microsoft 365: enter Tenant ID and App ID and install the certificate.' }
-            else { $tok=Lz92752b81b9 -TenantId $tid -ClientId $app -Thumbprint $th; $s=Invoke-RestMethod -Method GET -Uri 'https://graph.microsoft.com/v1.0/sites/root' -Headers @{ Authorization="Bearer $tok" }; $msgs += "Microsoft 365: OK ($($s.webUrl))." }
+            else { $tok=Lzf35a568d05 -TenantId $tid -ClientId $app -Thumbprint $th; $s=Invoke-RestMethod -Method GET -Uri 'https://graph.microsoft.com/v1.0/sites/root' -Headers @{ Authorization="Bearer $tok" }; $msgs += "Microsoft 365: OK ($($s.webUrl))." }
         } catch { $msgs += "Microsoft 365: FAILED - $($_.Exception.Message)" }
         $script:AS.lblStatus.Text = $msgs -join "`n"
         $script:AS.lblStatus.Foreground = if ($msgs -match 'FAILED|missing|enter') { 'Red' } else { 'Green' }
     })
     $btnSave.Add_Click({
         try {
-            $ep = Lz7c66cc601c $script:AS.cmbDom.SelectedItem $script:AS.tbCell.Text
-            Lz72fd4a5484 -Name 'DattoEndpointUrl' -Value $ep
-            Lz72fd4a5484 -Name 'DattoClientId'    -Value ("$($script:AS.tbDId.Text)".Trim())
-            Lz72fd4a5484 -Name 'TenantId'         -Value ("$($script:AS.tbTid.Text)".Trim())
-            Lz72fd4a5484 -Name 'GraphClientId'    -Value ("$($script:AS.tbApp.Text)".Trim())
-            Lz72fd4a5484 -Name 'SharePointRootUrl'-Value ("$($script:AS.tbSp.Text)".Trim())
-            Lz72fd4a5484 -Name 'OneDriveHostUrl'  -Value ("$($script:AS.tbOd.Text)".Trim())
-            Lz72fd4a5484 -Name 'TeamSiteBaseUrl'  -Value ("$($script:AS.tbTs.Text)".Trim())
-            Lz72fd4a5484 -Name 'DefaultSiteUrl'   -Value ("$($script:AS.tbDef.Text)".Trim())
-            Lz72fd4a5484 -Name 'UpnDomain'        -Value ("$($script:AS.tbUpn.Text)".Trim())
+            $ep = Lzd44755ef52 $script:AS.cmbDom.SelectedItem $script:AS.tbCell.Text
+            Lz555805c62d -Name 'DattoEndpointUrl' -Value $ep
+            Lz555805c62d -Name 'DattoClientId'    -Value ("$($script:AS.tbDId.Text)".Trim())
+            Lz555805c62d -Name 'TenantId'         -Value ("$($script:AS.tbTid.Text)".Trim())
+            Lz555805c62d -Name 'GraphClientId'    -Value ("$($script:AS.tbApp.Text)".Trim())
+            Lz555805c62d -Name 'SharePointRootUrl'-Value ("$($script:AS.tbSp.Text)".Trim())
+            Lz555805c62d -Name 'OneDriveHostUrl'  -Value ("$($script:AS.tbOd.Text)".Trim())
+            Lz555805c62d -Name 'TeamSiteBaseUrl'  -Value ("$($script:AS.tbTs.Text)".Trim())
+            Lz555805c62d -Name 'DefaultSiteUrl'   -Value ("$($script:AS.tbDef.Text)".Trim())
+            Lz555805c62d -Name 'UpnDomain'        -Value ("$($script:AS.tbUpn.Text)".Trim())
             if ($script:AS.pbSec.Password) {
-                Lz3e570e3517 -Value $script:AS.pbSec.Password
+                Lz1821ee2743 -Value $script:AS.pbSec.Password
             }
             if ($script:JobOpen -and $script:ConfigPath) { try { $script:Cfg = Import-ResolvedConfig $script:ConfigPath } catch {} }
             (Show-Msg -Text ('API settings saved. New runs will use them; a run already in progress finishes on its old settings.') -Caption ('Saved')) | Out-Null
@@ -4314,12 +4653,12 @@ function Lz83927bb7fe {
     })
     [void]$win2.ShowDialog()
 }
-function Lzb06b250f29 { param($Cfg,[string]$Path)
+function Lz0c36b562aa { param($Cfg,[string]$Path)
     $node=$Cfg
     foreach ($seg in ($Path -split '\.')) { if ($null -eq $node) { return $null }; if ($node.PSObject.Properties.Name -contains $seg) { $node=$node.$seg } else { return $null } }
     return $node
 }
-function Lz83e58f47c1 { param($Cfg,[string]$Path,$Value)
+function Lz1a01d03e9b { param($Cfg,[string]$Path,$Value)
     $segs=$Path -split '\.'; $node=$Cfg
     for ($i=0;$i -lt $segs.Count-1;$i++){ $seg=$segs[$i]; if ($node.PSObject.Properties.Name -notcontains $seg){ $node|Add-Member -NotePropertyName $seg -NotePropertyValue ([pscustomobject]@{}) -Force }; $node=$node.$seg }
     $leaf=$segs[-1]
@@ -4334,29 +4673,37 @@ $script:SettingSpecs = @(
   @{ Path='run.tuning.chunkSizeMB';         Label='Chunk size (MB)';       Type='int';  Rec='10'; Info='Chunk size for files above the single-PUT limit. Recommended 10. Larger chunks mean fewer requests but more to re-send if a chunk fails.' }
   @{ Path='run.tuning.excludePatterns';     Label='Exclude (; separated)'; Type='list'; Rec='~$*;*.tmp;thumbs.db;*.DS_Store'; Info='Filename wildcards to skip, separated by semicolons. Recommended to skip Office lock files and OS junk: ~$*;*.tmp;thumbs.db;*.DS_Store. Add *.bak or *.old to leave backups behind.' }
   @{ Path='run.tuning.maxFileSizeMB';       Label='Max file size (MB)';    Type='int';  Rec='0';  Info='Skip files larger than this. 0 means no limit (recommended for a full migration). Set a value to defer very large items to a separate run.' }
+  @{ Path='run.tuning.modifiedAfter';       Label='Modified after (date)'; Type='date'; Rec='';   Info='Only migrate files modified ON OR AFTER this date. Type it year-month-day, for example 2026-06-25 (year 2026, month 06, day 25). It is read as UTC midnight, so it does not shift with the time zone of the computer running the migration. Leave blank for no lower limit. Handy to migrate only what changed since a cut-over date. Applies per job.' }
+  @{ Path='run.tuning.modifiedBefore';      Label='Modified before (date)';Type='date'; Rec='';   Info='Only migrate files modified BEFORE this date, exclusive: a file dated exactly this day is NOT included. Type it year-month-day, for example 2026-06-25 (year 2026, month 06, day 25). It is read as UTC midnight, so it does not shift with the time zone of the computer running the migration. Leave blank for no upper limit. Handy to move only older files to an archive tier. Applies per job.' }
   @{ Path='run.throttle.adaptive.enabled';         Label='Auto ease-off (throttle)'; Type='bool'; Rec='true'; Info='When Microsoft 365 starts throttling (asking us to slow down), automatically reduce how many files upload at once, then speed back up when it calms down. Recommended ON. This is best practice and protects the run without you watching it. Turn off only for testing.' }
   @{ Path='run.throttle.adaptive.minWorkers';      Label='Min uploaders when throttled'; Type='int'; Rec='1'; Info='The fewest simultaneous uploads to drop to when throttled. Recommended 1 (safest, always makes progress). Raise it only if you are sure the tenant tolerates more.' }
   @{ Path='run.throttle.adaptive.growAfterSeconds';Label='Recover after (seconds)'; Type='int'; Rec='30'; Info='How long to stay calm before adding an uploader back. Recommended 30. Lower recovers faster but risks bouncing back into throttling; higher is gentler.' }
   @{ Path='run.bandwidth.maxUploadMbps';   Label='Max upload (Mb/s)';   Type='int'; Rec='0'; Info='Cap on how much upload bandwidth the migration uses, in megabits per second. 0 means no cap (use the full line). Set a value to avoid saturating the client''s internet during working hours, for example 20 on a 50 Mb/s upload line. The run just takes longer.' }
   @{ Path='run.bandwidth.maxDownloadMbps'; Label='Max download (Mb/s)'; Type='int'; Rec='0'; Info='Cap on download bandwidth from Datto, in megabits per second. 0 means no cap. Usually you only need the upload cap; set this only if pulling from Datto is also affecting the client''s connection.' }
+  @{ Path='run.confirmations.preMigrationChecklist'; Label='Pre-migration checklist'; Type='bool'; Rec='true'; Info='Show a short checklist to confirm before the FIRST upload of each job: that you are authorised to migrate this data, the destination has backup/recovery, backups are tested, retention and versioning are on, and you have tested on non-production data. It appears once per job and is remembered after you agree. Untick to switch it off for this job. Recommended: on (leave it ticked).' }
 )
-function Lz939055a5ac {
+function Lz7f7750e958 {
     try { $cfg = Read-ConfigJson $script:ConfigPath } catch { (Show-Msg -Text ("Could not read this job's settings file.`n`nIt may be open in another program, or damaged. Try closing and reopening the job.`n`nTechnical detail: $($_.Exception.Message)")); return }
     $win2 = New-Object System.Windows.Window
-    Lz7adedfce11 $win2
+    Lzbc22fda021 $win2
     $win2.Title='Settings and tuning'; $win2.SizeToContent='WidthAndHeight'; $win2.WindowStartupLocation='CenterScreen'; $win2.ResizeMode='NoResize'
     $root = New-Object System.Windows.Controls.StackPanel; $root.Margin='16'
-    function Lz957ad0dd62 { param($Grid,[int]$Row,[string]$Label,[string]$Value,[string]$Info,[string]$Rec)
+    function Lz4a8794634e { param($Grid,[int]$Row,[string]$Label,[string]$Value,[string]$Info,[string]$Rec,[string]$Type='text')
         $rd=New-Object System.Windows.Controls.RowDefinition; $rd.Height='Auto'; $Grid.RowDefinitions.Add($rd)
-        $lbl=New-Object System.Windows.Controls.TextBlock; $lbl.Text=$Label; $lbl.VerticalAlignment='Center'; $lbl.Margin='0,4,8,4'
+        $lbl=New-Object System.Windows.Controls.TextBlock; $lbl.Text=$Label; $lbl.VerticalAlignment='Center'; $lbl.Margin='0,4,8,4'; $lbl.TextWrapping='Wrap'
         [System.Windows.Controls.Grid]::SetRow($lbl,$Row); [System.Windows.Controls.Grid]::SetColumn($lbl,0); [void]$Grid.Children.Add($lbl)
-        $tb=New-Object System.Windows.Controls.TextBox; $tb.Margin='0,4,0,4'; $tb.Text="$Value"
-        [System.Windows.Controls.Grid]::SetRow($tb,$Row); [System.Windows.Controls.Grid]::SetColumn($tb,1); [void]$Grid.Children.Add($tb)
+        if ($Type -eq 'bool') {
+            $ctl=New-Object System.Windows.Controls.CheckBox; $ctl.VerticalAlignment='Center'; $ctl.Margin='0,4,0,4'
+            $ctl.IsChecked=("$Value" -match '^(1|true|yes|on)$')
+        } else {
+            $ctl=New-Object System.Windows.Controls.TextBox; $ctl.Margin='0,4,0,4'; $ctl.Text="$Value"
+        }
+        [System.Windows.Controls.Grid]::SetRow($ctl,$Row); [System.Windows.Controls.Grid]::SetColumn($ctl,1); [void]$Grid.Children.Add($ctl)
         $ib=New-Object System.Windows.Controls.Button; $ib.Content=([char]0x2139); $ib.Width=26; $ib.Margin='6,4,0,4'; $ib.ToolTip=$Info
         $info=$Info; $labelText=$Label; $rec=$Rec
         $ib.Add_Click({ $m = if ($rec) { $info + "`n`nRecommended: " + $rec } else { $info }; (Show-Msg -Text ($m) -Caption ($labelText)) }.GetNewClosure())
         [System.Windows.Controls.Grid]::SetRow($ib,$Row); [System.Windows.Controls.Grid]::SetColumn($ib,2); [void]$Grid.Children.Add($ib)
-        return $tb
+        return $ctl
     }
     $intro = New-Object System.Windows.Controls.TextBlock
     $intro.Text='Performance and filtering. You do not need to change anything here. The defaults are already tuned and work well for most jobs. Click the i on any row to see what it does and the recommended value. These apply on the next run (speed limits apply immediately). Datto and Microsoft 365 connection details are under the separate "API settings" button.'
@@ -4367,9 +4714,9 @@ function Lz939055a5ac {
     $script:SetBoxes = @{}
     $r = 0
     foreach ($s in $script:SettingSpecs) {
-        $val = Lzb06b250f29 -Cfg $cfg -Path $s.Path
+        $val = Lz0c36b562aa -Cfg $cfg -Path $s.Path
         $disp = if ($s.Type -eq 'list') { (@($val) -join ';') } else { "$val" }
-        $script:SetBoxes[$s.Path] = Lz957ad0dd62 -Grid $grid -Row $r -Label $s.Label -Value $disp -Info $s.Info -Rec $s.Rec
+        $script:SetBoxes[$s.Path] = Lz4a8794634e -Grid $grid -Row $r -Label $s.Label -Value $disp -Info $s.Info -Rec $s.Rec -Type $s.Type
         $r++
     }
     [void]$root.Children.Add($grid)
@@ -4382,7 +4729,7 @@ function Lz939055a5ac {
     $reset.Add_Click({
         foreach ($s in $script:SettingSpecs) {
             $box = $script:SetBoxes[$s.Path]
-            if ($box) { $box.Text = "$($s.Rec)" }
+            if ($box) { if ($s.Type -eq 'bool') { $box.IsChecked = ("$($s.Rec)" -match '^(1|true|yes|on)$') } else { $box.Text = "$($s.Rec)" } }
         }
         if ($script:SetResetNote) { $script:SetResetNote.Visibility = 'Visible' }
     })
@@ -4404,10 +4751,28 @@ function Lz939055a5ac {
         try {
             foreach ($s in $script:SettingSpecs) {
                 $raw="$($script:SetBoxes[$s.Path].Text)".Trim()
-                if ($s.Type -eq 'int') { $v=0; [void][int]::TryParse($raw,[ref]$v); Lz83e58f47c1 -Cfg $script:SetCfg -Path $s.Path -Value $v }
-                elseif ($s.Type -eq 'list') { $arr=@($raw -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ }); Lz83e58f47c1 -Cfg $script:SetCfg -Path $s.Path -Value $arr }
-                elseif ($s.Type -eq 'bool') { Lz83e58f47c1 -Cfg $script:SetCfg -Path $s.Path -Value ([bool]($raw -match '^(1|true|yes|on)$')) }
-                else { Lz83e58f47c1 -Cfg $script:SetCfg -Path $s.Path -Value $raw }
+                if ($s.Type -eq 'int') { $v=0; [void][int]::TryParse($raw,[ref]$v); Lz1a01d03e9b -Cfg $script:SetCfg -Path $s.Path -Value $v }
+                elseif ($s.Type -eq 'list') { $arr=@($raw -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ }); Lz1a01d03e9b -Cfg $script:SetCfg -Path $s.Path -Value $arr }
+                elseif ($s.Type -eq 'bool') { Lz1a01d03e9b -Cfg $script:SetCfg -Path $s.Path -Value ([bool]$script:SetBoxes[$s.Path].IsChecked) }
+                elseif ($s.Type -eq 'date') {
+                    if ($raw) {
+                        $okDate = $false
+                        try { [void][datetimeoffset]::Parse($raw, [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AssumeUniversal); $okDate = $true } catch {}
+                        if (-not $okDate) { (Show-Msg -Text ("'$($s.Label)' must be a date like 2026-06-25 (year-month-day), or left blank. You typed: '$raw'.") -Caption ('Check the date') -Icon ('Warning')) | Out-Null; return }
+                    }
+                    Lz1a01d03e9b -Cfg $script:SetCfg -Path $s.Path -Value $raw
+                }
+                else { Lz1a01d03e9b -Cfg $script:SetCfg -Path $s.Path -Value $raw }
+            }
+            $maRaw="$($script:SetBoxes['run.tuning.modifiedAfter'].Text)".Trim()
+            $mbRaw="$($script:SetBoxes['run.tuning.modifiedBefore'].Text)".Trim()
+            if ($maRaw -and $mbRaw) {
+                try {
+                    $iv=[System.Globalization.CultureInfo]::InvariantCulture; $au=[System.Globalization.DateTimeStyles]::AssumeUniversal
+                    if ([datetimeoffset]::Parse($maRaw,$iv,$au) -ge [datetimeoffset]::Parse($mbRaw,$iv,$au)) {
+                        (Show-Msg -Text ("'Modified after' ($maRaw) must be earlier than 'Modified before' ($mbRaw), or nothing would match. Widen the window, or clear one of them.") -Caption ('Check the dates') -Icon ('Warning')) | Out-Null; return
+                    }
+                } catch {}
             }
             Write-ConfigJson -Cfg $script:SetCfg -Path $script:ConfigPath
             try { $script:Cfg = Import-ResolvedConfig $script:ConfigPath } catch { $script:Cfg = $script:SetCfg }
@@ -4430,7 +4795,7 @@ function Lz939055a5ac {
 }
 $script:NetLast = $null
 $script:NetHist = New-Object System.Collections.Generic.List[double]
-function Lzbd1797c71e {
+function Lzfff99d097c {
     try {
         $now = [DateTime]::UtcNow
         $cur = @{}
@@ -4468,23 +4833,23 @@ function Lzbd1797c71e {
 }
 $script:NetTimer = New-Object System.Windows.Threading.DispatcherTimer
 $script:NetTimer.Interval = [TimeSpan]::FromMilliseconds(1000)
-$script:NetTimer.Add_Tick({ Lzbd1797c71e })
+$script:NetTimer.Add_Tick({ Lzfff99d097c })
 $script:NetTimer.Start()
-Lz56114cbde1
+Lzd1a6db9b04
 $startJobJson = Join-Path (Split-Path $script:ConfigPath) 'job.json'
 if (Test-Path $startJobJson) {
-    Lzb13ee64e8a -ConfigFile $script:ConfigPath
+    Lzb2ce610eb2 -ConfigFile $script:ConfigPath
 } else {
     $ctrl.LblJob.Text = '(no job open - use the Job menu)'
-    $ctrl.BtnConnect.IsEnabled = $false; Lz9dad955a63 $false
-    Lzbba6ea7743 $false
+    $ctrl.BtnConnect.IsEnabled = $false; Lze235040386 $false
+    Lz453f412a53 $false
     Update-ProjectList
 }
 Set-DestModeUI
-function Lz3cfa96f6c9 {
+function Lz535d915fca {
     Add-Type -AssemblyName PresentationFramework | Out-Null
     $win2 = New-Object System.Windows.Window
-    Lz7adedfce11 $win2
+    Lzbc22fda021 $win2
     $win2.Title = 'Datto Workplace credentials'; $win2.SizeToContent = 'Height'; $win2.Width = 520
     $win2.WindowStartupLocation = 'CenterScreen'; $win2.ResizeMode = 'NoResize'
     try {
@@ -4495,7 +4860,7 @@ function Lz3cfa96f6c9 {
     $intro = New-Object System.Windows.Controls.TextBlock
     $intro.Text = 'From the Datto Workplace admin portal: create an API integration, then copy its Client ID and Secret here. Saved on this computer only. Step-by-step guide: www.liscaragh.com'
     $intro.TextWrapping = 'Wrap'; $intro.Foreground = 'Gray'; $intro.Margin = '0,0,0,8'; [void]$root.Children.Add($intro)
-    function Lz4d09ef4af3 { param($Label, $Control, $Info)
+    function Lz0ff4a58757 { param($Label, $Control, $Info)
         $g = New-Object System.Windows.Controls.Grid
         foreach ($w in '130','310','40') { $c = New-Object System.Windows.Controls.ColumnDefinition; $c.Width = $w; $g.ColumnDefinitions.Add($c) }
         $l = New-Object System.Windows.Controls.TextBlock; $l.Text = $Label; $l.VerticalAlignment = 'Center'; $l.Margin = '0,3,8,3'
@@ -4511,15 +4876,15 @@ function Lz3cfa96f6c9 {
     }
     $cmbDom = New-Object System.Windows.Controls.ComboBox; $cmbDom.Margin = '0,3,0,3'
     foreach ($d in $script:DattoDomains) { [void]$cmbDom.Items.Add($d) }
-    $parts = Lz9a789facb7 ([string](Get-RegSetting 'DattoEndpointUrl'))
+    $parts = Lz67a6f15e0c ([string](Get-RegSetting 'DattoEndpointUrl'))
     if ($parts.Domain) { $cmbDom.SelectedItem = $parts.Domain } else { $cmbDom.SelectedIndex = 0 }
-    [void](Lz4d09ef4af3 -Label 'Region (domain)' -Control $cmbDom -Info 'Your Datto Workplace region. If the web address you use for Datto starts with "eu", pick the eu one; "us", pick us, and so on.')
+    [void](Lz0ff4a58757 -Label 'Region (domain)' -Control $cmbDom -Info 'Your Datto Workplace region. If the web address you use for Datto starts with "eu", pick the eu one; "us", pick us, and so on.')
     $tbCell = New-Object System.Windows.Controls.TextBox; $tbCell.Margin = '0,3,0,3'; $tbCell.Text = "$($parts.Cell)"
-    [void](Lz4d09ef4af3 -Label 'Cell (number)' -Control $tbCell -Info 'A small number that is part of your Datto web address (for example the 2 in .../2/api/v1). It is shown on the Datto API integration page.')
+    [void](Lz0ff4a58757 -Label 'Cell (number)' -Control $tbCell -Info 'A small number that is part of your Datto web address (for example the 2 in .../2/api/v1). It is shown on the Datto API integration page.')
     $tbDId = New-Object System.Windows.Controls.TextBox; $tbDId.Margin = '0,3,0,3'; $tbDId.Text = [string](Get-RegSetting 'DattoClientId')
-    [void](Lz4d09ef4af3 -Label 'Client ID' -Control $tbDId -Info 'The username for the Datto connection, from the API integration you created in the Datto Workplace admin portal.')
+    [void](Lz0ff4a58757 -Label 'Client ID' -Control $tbDId -Info 'The username for the Datto connection, from the API integration you created in the Datto Workplace admin portal.')
     $pbSec = New-Object System.Windows.Controls.PasswordBox; $pbSec.Margin = '0,3,0,3'
-    [void](Lz4d09ef4af3 -Label 'Secret' -Control $pbSec -Info 'The password that goes with the Client ID, from the same API integration. Treat it like a password. Leave blank to keep the one already saved.')
+    [void](Lz0ff4a58757 -Label 'Secret' -Control $pbSec -Info 'The password that goes with the Client ID, from the same API integration. Treat it like a password. Leave blank to keep the one already saved.')
     $secNote = New-Object System.Windows.Controls.TextBlock; $secNote.Text = 'Leave the secret blank to keep the current one.'; $secNote.Foreground = 'Gray'; $secNote.FontSize = 11; $secNote.Margin = '130,0,0,0'; [void]$root.Children.Add($secNote)
     $btnRow = New-Object System.Windows.Controls.StackPanel; $btnRow.Orientation = 'Horizontal'; $btnRow.HorizontalAlignment = 'Right'; $btnRow.Margin = '0,14,0,0'
     $btnTest = New-Object System.Windows.Controls.Button; $btnTest.Content = 'Test'; $btnTest.Padding = '12,4'; $btnTest.Margin = '0,0,8,0'
@@ -4532,8 +4897,8 @@ function Lz3cfa96f6c9 {
     $btnTest.Add_Click({
         $script:DS.lblStatus.Text = 'Testing...'; $script:DS.lblStatus.Foreground = 'Gray'
         try {
-            $ep = Lz7c66cc601c $script:DS.cmbDom.SelectedItem $script:DS.tbCell.Text
-            $secPlain = if ($script:DS.pbSec.Password) { $script:DS.pbSec.Password } else { Lz26dbd273a2 }
+            $ep = Lzd44755ef52 $script:DS.cmbDom.SelectedItem $script:DS.tbCell.Text
+            $secPlain = if ($script:DS.pbSec.Password) { $script:DS.pbSec.Password } else { Lzcc6218e58d }
             if (-not $ep -or -not "$($script:DS.tbDId.Text)".Trim() -or -not $secPlain) { $script:DS.lblStatus.Text = 'Enter the region, cell, Client ID and Secret first.'; $script:DS.lblStatus.Foreground = 'Red'; return }
             $hdr = @{ Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("$("$($script:DS.tbDId.Text)".Trim()):$secPlain")) }
             $r = Invoke-RestMethod -Uri "$($ep.TrimEnd('/'))/file/projects" -Headers $hdr -TimeoutSec 60 -ErrorAction Stop
@@ -4543,11 +4908,11 @@ function Lz3cfa96f6c9 {
     })
     $btnSave.Add_Click({
         try {
-            $ep = Lz7c66cc601c $script:DS.cmbDom.SelectedItem $script:DS.tbCell.Text
+            $ep = Lzd44755ef52 $script:DS.cmbDom.SelectedItem $script:DS.tbCell.Text
             if (-not $ep -or -not "$($script:DS.tbDId.Text)".Trim()) { $script:DS.lblStatus.Text = 'Enter the region, cell and Client ID before saving.'; $script:DS.lblStatus.Foreground = 'Red'; return }
-            Lz72fd4a5484 -Name 'DattoEndpointUrl' -Value $ep
-            Lz72fd4a5484 -Name 'DattoClientId'    -Value ("$($script:DS.tbDId.Text)".Trim())
-            if ($script:DS.pbSec.Password) { Lz3e570e3517 -Value $script:DS.pbSec.Password }
+            Lz555805c62d -Name 'DattoEndpointUrl' -Value $ep
+            Lz555805c62d -Name 'DattoClientId'    -Value ("$($script:DS.tbDId.Text)".Trim())
+            if ($script:DS.pbSec.Password) { Lz1821ee2743 -Value $script:DS.pbSec.Password }
             if ($script:JobOpen -and $script:ConfigPath) { try { $script:Cfg = Import-ResolvedConfig $script:ConfigPath } catch {} }
             $script:DS.win2.Close()
         } catch { $script:DS.lblStatus.Text = "Could not save: $($_.Exception.Message)"; $script:DS.lblStatus.Foreground = 'Red' }
@@ -4555,13 +4920,13 @@ function Lz3cfa96f6c9 {
     [void]$win2.ShowDialog()
     $script:DS = $null
 }
-function Lz3ef81ab6e1 {
+function Lzf2ab28e4f9 {
     $dep = [string](Get-RegSetting 'DattoEndpointUrl')
     $did = [string](Get-RegSetting 'DattoClientId')
-    $sec = Lz26dbd273a2
+    $sec = Lzcc6218e58d
     return [bool]($dep -and $did -and $sec)
 }
-function Lzec9c4e8c4c {
+function Lz2c3078b00a {
     $tid = [string](Get-RegSetting 'TenantId')
     $app = [string](Get-RegSetting 'GraphClientId')
     $th  = [string](Get-RegSetting 'CertThumbprint')
@@ -4571,7 +4936,7 @@ function Lzec9c4e8c4c {
         return [bool]$c.HasPrivateKey
     } catch { return $false }
 }
-function Lz08cf33d390 {
+function Lz3c1f2dd80b {
     if (-not $script:SC) { return }
     $tick = [string][char]0x2713; $dot = [string][char]0x25CB
     $ok = '#12B76A'; $todo = '#B54708'; $grey = '#475467'
@@ -4583,17 +4948,17 @@ function Lz08cf33d390 {
     $script:SC.PreText.Text = if ($preOk) { 'PowerShell 7 and the Microsoft Graph module are installed.' }
         elseif (-not $psOk) { 'PowerShell 7 is not running this app. Re-run the installer, which sets it up.' }
         else { 'The Microsoft Graph module is missing. Re-run the installer, which sets it up.' }
-    $dOk = Lz3ef81ab6e1
+    $dOk = Lzf2ab28e4f9
     $script:SC.DatTick.Text = if ($dOk) { $tick } else { $dot }
     $script:SC.DatTick.Foreground = if ($dOk) { $ok } else { $todo }
     $script:SC.DatText.Text = if ($dOk) { 'Datto Workplace credentials are saved on this computer.' }
         else { 'Not set yet. You need the Client ID and Secret from an API integration in the Datto Workplace admin portal.' }
-    $mOk = Lzec9c4e8c4c
+    $mOk = Lz2c3078b00a
     $script:SC.MsTick.Text = if ($mOk) { $tick } else { $dot }
     $script:SC.MsTick.Foreground = if ($mOk) { $ok } else { $todo }
     $script:SC.MsText.Text = if ($mOk) { 'Microsoft 365 is connected: app registration, certificate and consent are in place.' }
         else { 'Not set yet. The wizard signs in as your Microsoft 365 admin and sets everything up for you.' }
-    $eOk = Lz5157afd059
+    $eOk = Lz4df6b375db
     $script:SC.EmTick.Text = if ($eOk) { $tick } else { $dot }
     $script:SC.EmTick.Foreground = if ($eOk) { $ok } else { '#98A2B3' }
     $script:SC.EmText.Text = if ($eOk) { "Email alerts are on, sending from $([string](Get-RegSetting 'EmailSender'))." }
@@ -4612,10 +4977,10 @@ function Lz08cf33d390 {
         $script:SC.LblFoot.Foreground = $grey
     }
 }
-function Lz69bc5552ba {
+function Lzef5e6f6fbd {
     Add-Type -AssemblyName PresentationFramework | Out-Null
     $w = New-Object System.Windows.Window
-    Lz7adedfce11 $w
+    Lzbc22fda021 $w
     $w.Title = 'Set up this computer'
     $w.Width = 660; $w.SizeToContent = 'Height'; $w.ResizeMode = 'NoResize'; $w.Background = 'White'
     $w.FontFamily = 'Segoe UI'; $w.FontSize = 13
@@ -4657,7 +5022,7 @@ function Lz69bc5552ba {
     $body = New-Object System.Windows.Controls.StackPanel
     $body.Margin = '20,16,20,16'
     [void]$dock.Children.Add($body)
-    function Lzd8355b3f17 {
+    function Lz79f3ad7371 {
         param([string]$Title, [System.Windows.Controls.Button[]]$Buttons)
         $g = New-Object System.Windows.Controls.Grid
         $g.Margin = '0,0,0,14'
@@ -4685,7 +5050,7 @@ function Lz69bc5552ba {
         [void]$body.Children.Add($g)
         return @{ Tick = $tk; Text = $td }
     }
-    function Lzdbdffab752 {
+    function Lzc61fcfdba5 {
         param([string]$Tip)
         $ib = New-Object System.Windows.Controls.Button
         $ib.Content = ([char]0x2139); $ib.Width = 26; $ib.Margin = '6,0,0,0'; $ib.VerticalAlignment = 'Top'
@@ -4693,16 +5058,16 @@ function Lz69bc5552ba {
         $ib.Add_Click({ try { Start-Process 'https://www.liscaragh.com' } catch {} })
         return $ib
     }
-    $pre = Lzd8355b3f17 -Title 'Prerequisites'
+    $pre = Lz79f3ad7371 -Title 'Prerequisites'
     $bDat = New-Object System.Windows.Controls.Button
     $bDat.Content = 'Enter credentials...'; $bDat.Padding = '10,4'; $bDat.VerticalAlignment = 'Top'
-    $dat = Lzd8355b3f17 -Title 'Datto Workplace credentials' -Buttons @($bDat, (Lzdbdffab752 'Step-by-step Datto setup guide (opens www.liscaragh.com in your browser)'))
+    $dat = Lz79f3ad7371 -Title 'Datto Workplace credentials' -Buttons @($bDat, (Lzc61fcfdba5 'Step-by-step Datto setup guide (opens www.liscaragh.com in your browser)'))
     $bMs = New-Object System.Windows.Controls.Button
     $bMs.Content = 'Set up...'; $bMs.Padding = '10,4'; $bMs.VerticalAlignment = 'Top'; $bMs.FontWeight = 'SemiBold'
-    $ms = Lzd8355b3f17 -Title 'Microsoft 365' -Buttons @($bMs, (Lzdbdffab752 'What the wizard does, explained (opens www.liscaragh.com in your browser)'))
+    $ms = Lz79f3ad7371 -Title 'Microsoft 365' -Buttons @($bMs, (Lzc61fcfdba5 'What the wizard does, explained (opens www.liscaragh.com in your browser)'))
     $bEm = New-Object System.Windows.Controls.Button
     $bEm.Content = 'Set up...'; $bEm.Padding = '10,4'; $bEm.VerticalAlignment = 'Top'
-    $em = Lzd8355b3f17 -Title 'Email alerts (optional)' -Buttons @($bEm)
+    $em = Lz79f3ad7371 -Title 'Email alerts (optional)' -Buttons @($bEm)
     $manual = New-Object System.Windows.Controls.TextBlock
     $manual.Text = 'Prefer to do the Microsoft 365 side by hand, or handed the details by an IT contact? Settings > API settings takes the values directly.'
     $manual.TextWrapping = 'Wrap'; $manual.Foreground = '#98A2B3'; $manual.FontSize = 11; $manual.Margin = '34,0,0,0'
@@ -4714,15 +5079,15 @@ function Lz69bc5552ba {
         MsTick  = $ms.Tick;  MsText  = $ms.Text
         EmTick  = $em.Tick;  EmText  = $em.Text
     }
-    $bDat.Add_Click({ try { Lz3cfa96f6c9 } catch { (Show-Msg -Text ("The Datto step hit a problem: $($_.Exception.Message)") -Icon ('Error')) | Out-Null }; try { Lz08cf33d390; $script:SC.Win.Activate() | Out-Null } catch {} })
-    $bMs.Add_Click({ try { Lzca1733374f } catch { (Show-Msg -Text ("The Microsoft 365 setup hit a problem: $($_.Exception.Message)") -Icon ('Error')) | Out-Null }; try { Lz08cf33d390; $script:SC.Win.Activate() | Out-Null } catch {} })
-    $bEm.Add_Click({ try { Lz045cf06793 } catch { (Show-Msg -Text ("The email step hit a problem: $($_.Exception.Message)") -Icon ('Error')) | Out-Null }; try { Lz08cf33d390; $script:SC.Win.Activate() | Out-Null } catch {} })
+    $bDat.Add_Click({ try { Lz535d915fca } catch { (Show-Msg -Text ("The Datto step hit a problem: $($_.Exception.Message)") -Icon ('Error')) | Out-Null }; try { Lz3c1f2dd80b; $script:SC.Win.Activate() | Out-Null } catch {} })
+    $bMs.Add_Click({ try { Lz70acca6b03 } catch { (Show-Msg -Text ("The Microsoft 365 setup hit a problem: $($_.Exception.Message)") -Icon ('Error')) | Out-Null }; try { Lz3c1f2dd80b; $script:SC.Win.Activate() | Out-Null } catch {} })
+    $bEm.Add_Click({ try { Lz51a627d6a5 } catch { (Show-Msg -Text ("The email step hit a problem: $($_.Exception.Message)") -Icon ('Error')) | Out-Null }; try { Lz3c1f2dd80b; $script:SC.Win.Activate() | Out-Null } catch {} })
     $btnGo.Add_Click({ try { $script:SC.Win.Close() } catch {} })
-    Lz08cf33d390
+    Lz3c1f2dd80b
     [void]$w.ShowDialog()
     $script:SC = $null
 }
-function Lza92dcb9fd3 {
+function Lzdf2e412e8c {
     param([string]$Text, [string]$Colour = '#475467', [switch]$Strong)
     if (-not $script:WZ) { return }
     $t = New-Object System.Windows.Controls.TextBlock
@@ -4732,7 +5097,7 @@ function Lza92dcb9fd3 {
     try { $script:WZ.Scroll.ScrollToEnd() } catch {}
     try { $script:WZ.Win.Dispatcher.Invoke([action]{}, [Windows.Threading.DispatcherPriority]::Background) } catch {}
 }
-function Lzc41823b284 {
+function Lz6b4feb8d17 {
     param([int]$Seconds, [string]$Message)
     if (-not $script:WZ) { Start-Sleep -Seconds $Seconds; return }
     $t = New-Object System.Windows.Controls.TextBlock
@@ -4748,7 +5113,7 @@ function Lzc41823b284 {
     $t.Text = "$Message - done."; $t.Foreground = '#12B76A'; $t.FontWeight = 'Normal'
     try { $script:WZ.Win.Dispatcher.Invoke([action]{}, [Windows.Threading.DispatcherPriority]::Background) } catch {}
 }
-function Lz524610c4a5 {
+function Lze038720f21 {
     param([string]$Text)
     if (-not $script:WZ) { return }
     $t = New-Object System.Windows.Controls.TextBlock
@@ -4757,10 +5122,10 @@ function Lz524610c4a5 {
     try { $script:WZ.Scroll.ScrollToEnd() } catch {}
     try { $script:WZ.Win.Dispatcher.Invoke([action]{}, [Windows.Threading.DispatcherPriority]::Render) } catch {}
 }
-function Lzb3f2a06dcf {
+function Lz9c04935af7 {
     try { return ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) } catch { return $false }
 }
-function Lz959fd73c5b {
+function Lz4420d874c8 {
     try {
         Add-Type -Namespace Liscara -Name ConsoleUtil -MemberDefinition @'
 [DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow();
@@ -4776,12 +5141,12 @@ function Lz959fd73c5b {
         }
     } catch {}
 }
-function Lzd1b89a4519 {
+function Lzc00efced2e {
     if ($script:ConsoleOwned -and $script:ConsoleHwnd -ne [IntPtr]::Zero) {
         try { [void][Liscara.ConsoleUtil]::ShowWindow($script:ConsoleHwnd, 0); $script:ConsoleHidden = $true } catch {}
     }
 }
-function Lz46c6ba2224 {
+function Lz4be3ba3149 {
     if ($script:ConsoleHwnd -ne [IntPtr]::Zero) {
         try {
             [void][Liscara.ConsoleUtil]::ShowWindow($script:ConsoleHwnd, 5)
@@ -4790,7 +5155,7 @@ function Lz46c6ba2224 {
         } catch {}
     }
 }
-function Lz3c2293f34e {
+function Lz38f416d02a {
     param([string]$Token, [string]$Claim)
     try {
         $p = ($Token -split '\.')[1].Replace('-', '+').Replace('_', '/')
@@ -4801,11 +5166,11 @@ function Lz3c2293f34e {
     } catch {}
     return ''
 }
-function Lz6df0c0fed3 {
+function Lz6fe2e233db {
     param([string]$Code, [string]$Url, [string]$Step, [string]$Purpose)
     Add-Type -AssemblyName PresentationFramework | Out-Null
     $w = New-Object System.Windows.Window
-    Lz7adedfce11 $w
+    Lzbc22fda021 $w
     $w.Title = 'Your sign-in code'; $w.Width = 460; $w.SizeToContent = 'Height'; $w.ResizeMode = 'NoResize'
     $w.Topmost = $true; $w.ShowInTaskbar = $true; $w.Background = 'White'
     $w.WindowStartupLocation = 'Manual'
@@ -4843,13 +5208,13 @@ function Lz6df0c0fed3 {
     }
     $script:DC = @{ Win = $w; Lbl = $ls; Ins = $t1; Code = $Code; Url = $Url }
     $bCopy.Add_Click({ try { [System.Windows.Clipboard]::SetText("$($script:DC.Code)"); $script:DC.Lbl.Text = 'Copied. Paste it into the sign-in page (Ctrl+V).' } catch {} })
-    $bOpen.Add_Click({ try { Lz4db5af1547 -Url "$($script:DC.Url)" } catch {} })
+    $bOpen.Add_Click({ try { Lzaf025f626e -Url "$($script:DC.Url)" } catch {} })
     $w.Show()
 }
-function Lz6d49ddb7dc {
+function Lz1a401d6473 {
     if ($script:DC) { try { $script:DC.Win.Close() } catch {}; $script:DC = $null }
 }
-function Lzc396e0389c {
+function Lz39910bb941 {
     param([string]$ClientId, [string]$Scope, [string]$Tenant = 'organizations', [scriptblock]$Say, [string]$Step, [string]$Purpose)
     if (-not $Say) { $Say = { } }
     $dc = Invoke-RestMethod -Method POST -Uri "https://login.microsoftonline.com/$Tenant/oauth2/v2.0/devicecode" -Body @{ client_id = $ClientId; scope = $Scope } -TimeoutSec 60 -ErrorAction Stop
@@ -4857,8 +5222,8 @@ function Lzc396e0389c {
     $pageUrl = "https://login.microsoftonline.com/common/oauth2/deviceauth?otc=$code"
     try { [System.Windows.Clipboard]::SetText($code) } catch {}
     & $Say "Your sign-in code is:  $code   - it is shown in the small window at the top left and is already on your clipboard." '#B42318'
-    Lz6df0c0fed3 -Code $code -Url $pageUrl -Step $Step -Purpose $Purpose
-    Lz4db5af1547 -Url $pageUrl
+    Lz6fe2e233db -Code $code -Url $pageUrl -Step $Step -Purpose $Purpose
+    Lzaf025f626e -Url $pageUrl
     $deadline = (Get-Date).AddSeconds([int]$dc.expires_in - 15)
     $interval = [Math]::Max([int]$dc.interval, 5)
     try {
@@ -4880,7 +5245,7 @@ function Lzc396e0389c {
                 } -TimeoutSec 60 -ErrorAction Stop
                 if ($tok.access_token) {
                     try { if ($script:DC) { $script:DC.Lbl.Text = 'Signed in. Carrying on...' } } catch {}
-                    try { Lz9cca27a92b } catch {}
+                    try { Lzf21f5ced13 } catch {}
                     return "$($tok.access_token)"
                 }
             } catch {
@@ -4892,9 +5257,9 @@ function Lzc396e0389c {
             }
         }
         throw 'the sign-in code expired before it was used.'
-    } finally { Lz6d49ddb7dc }
+    } finally { Lz1a401d6473 }
 }
-function Lz9cca27a92b {
+function Lzf21f5ced13 {
     try {
         if (-not ('Liscara.WinShow' -as [type])) {
             Add-Type -Namespace Liscara -Name WinShow -MemberDefinition @'
@@ -4920,7 +5285,7 @@ function Lz9cca27a92b {
         }
     } catch {}
 }
-function Lz4db5af1547 {
+function Lzaf025f626e {
     param([string]$Url)
     try {
         $progId = ''
@@ -4942,10 +5307,10 @@ function Lz4db5af1547 {
     } catch {}
     try { Start-Process $Url } catch {}
 }
-function Lz2aa3306616 {
+function Lz137d185e83 {
     try { if (Get-Command Set-MgGraphOption -ErrorAction SilentlyContinue) { Set-MgGraphOption -EnableLoginByWAM $false | Out-Null } } catch {}
 }
-function Lz0b64a93c53 {
+function Lzf4ad576b60 {
     param([scriptblock]$Action)
     $held = @()
     foreach ($cand in @($(if ($script:WZ) { $script:WZ.Win }), $(if ($script:SC) { $script:SC.Win }), $(if ($script:ES) { $script:ES.win2 }), $win)) {
@@ -4962,7 +5327,7 @@ function Lz0b64a93c53 {
     } catch {}
     try { & $Action }
     finally {
-        try { Lz9cca27a92b } catch {}
+        try { Lzf21f5ced13 } catch {}
         try {
             foreach ($h in $held) {
                 $h.W.Left = $h.L; $h.W.Top = $h.T
@@ -4973,58 +5338,58 @@ function Lz0b64a93c53 {
         } catch {}
     }
 }
-function Lzdd5f8344f9 {
+function Lzc1357cc043 {
     param([switch]$ForEmail)
     $script:WizSetupOk = $false
     $graphResId = '00000003-0000-0000-c000-000000000000'
     $roleNames  = @('Sites.ReadWrite.All','Files.ReadWrite.All','User.Read.All','Domain.Read.All','Organization.Read.All')
     if (-not (Get-Module Microsoft.Graph.Authentication -ListAvailable)) {
-        Lza92dcb9fd3 'The Microsoft Graph module is not installed. Re-run the installer (or run: Install-Module Microsoft.Graph.Authentication -Scope CurrentUser) and try again.' '#B42318' -Strong
+        Lzdf2e412e8c 'The Microsoft Graph module is not installed. Re-run the installer (or run: Install-Module Microsoft.Graph.Authentication -Scope CurrentUser) and try again.' '#B42318' -Strong
         return
     }
     try { Import-Module Microsoft.Graph.Authentication -ErrorAction Stop } catch {
-        Lza92dcb9fd3 "Could not load the Microsoft Graph module: $($_.Exception.Message)" '#B42318' -Strong
+        Lzdf2e412e8c "Could not load the Microsoft Graph module: $($_.Exception.Message)" '#B42318' -Strong
         return
     }
-    Lza92dcb9fd3 "Sign in with an account that can manage Microsoft 365 (a Global Administrator is simplest). The first time, Microsoft asks you to accept the permissions this setup itself needs; that is expected.$(if ($ForEmail) { ' Email alerts are included, so expect TWO sign-ins: this one, then one for Exchange Online (a separate service with its own sign-in).' })"
+    Lzdf2e412e8c "Sign in with an account that can manage Microsoft 365 (a Global Administrator is simplest). The first time, Microsoft asks you to accept the permissions this setup itself needs; that is expected.$(if ($ForEmail) { ' Email alerts are included, so expect TWO sign-ins: this one, then one for Exchange Online (a separate service with its own sign-in).' })"
     $wizScopes = @('Application.ReadWrite.All','AppRoleAssignment.ReadWrite.All','Organization.Read.All')
     if ($ForEmail) { $wizScopes += 'User.Read.All' }
-    Lz2aa3306616
+    Lz137d185e83
     $wizTokTid = ''; $wizTokAcct = ''; $wizConnected = $false
-    if (-not (Lzb3f2a06dcf)) {
-        Lza92dcb9fd3 'A MICROSOFT SIGN-IN WINDOW IS ABOUT TO OPEN. It can hide behind other windows - if you do not see it, check the taskbar. The app will not respond while it is open; that is normal.' '#B54708' -Strong
+    if (-not (Lz9c04935af7)) {
+        Lzdf2e412e8c 'A MICROSOFT SIGN-IN WINDOW IS ABOUT TO OPEN. It can hide behind other windows - if you do not see it, check the taskbar. The app will not respond while it is open; that is normal.' '#B54708' -Strong
         try {
-            Lz0b64a93c53 -Action { Connect-MgGraph -Scopes $wizScopes -NoWelcome -ErrorAction Stop }
+            Lzf4ad576b60 -Action { Connect-MgGraph -Scopes $wizScopes -NoWelcome -ErrorAction Stop }
             $wizConnected = $true
         } catch {
-            Lza92dcb9fd3 "The standard sign-in did not complete ($($_.Exception.Message)). Switching to a CODE sign-in: a small window will show your code, always on top." '#B54708' -Strong
+            Lzdf2e412e8c "The standard sign-in did not complete ($($_.Exception.Message)). Switching to a CODE sign-in: a small window will show your code, always on top." '#B54708' -Strong
         }
     } else {
-        Lza92dcb9fd3 'Using the CODE sign-in (the reliable path on this machine): a small window will show your code, always on top.' '#B54708' -Strong
+        Lzdf2e412e8c 'Using the CODE sign-in (the reliable path on this machine): a small window will show your code, always on top.' '#B54708' -Strong
     }
     if (-not $wizConnected) {
         try {
-            $at = Lzc396e0389c -ClientId '14d82eec-204b-4c2f-b7e8-296a70dab67e' -Scope ($wizScopes -join ' ') -Say { param($t, $c) Lza92dcb9fd3 $t $(if ($c) { $c } else { '#475467' }) -Strong } `
+            $at = Lz39910bb941 -ClientId '14d82eec-204b-4c2f-b7e8-296a70dab67e' -Scope ($wizScopes -join ' ') -Say { param($t, $c) Lzdf2e412e8c $t $(if ($c) { $c } else { '#475467' }) -Strong } `
                 -Step $(if ($ForEmail) { 'Sign-in 1 of 2: Microsoft 365 setup. A second sign-in, for Exchange Online, follows because email alerts are included.' } else { 'The only sign-in for this setup: Microsoft 365.' }) `
                 -Purpose "This sign-in asks your admin account for: Application.ReadWrite.All (create or find the app registration and add this computer's certificate), AppRoleAssignment.ReadWrite.All (record admin consent for the migration permissions), Organization.Read.All (read your tenant name and verified domains)$(if ($ForEmail) { ', User.Read.All (check whether the sender mailbox already exists)' }). Used once, for this setup only - migrations run with the app's certificate, never your account."
-            $wizTokTid = Lz3c2293f34e -Token $at -Claim 'tid'
-            $wizTokAcct = Lz3c2293f34e -Token $at -Claim 'upn'
-            if (-not $wizTokAcct) { $wizTokAcct = Lz3c2293f34e -Token $at -Claim 'preferred_username' }
+            $wizTokTid = Lz38f416d02a -Token $at -Claim 'tid'
+            $wizTokAcct = Lz38f416d02a -Token $at -Claim 'upn'
+            if (-not $wizTokAcct) { $wizTokAcct = Lz38f416d02a -Token $at -Claim 'preferred_username' }
             if ($wizTokAcct) { $script:CodeSignInUpn = $wizTokAcct }
             Connect-MgGraph -AccessToken (ConvertTo-SecureString $at -AsPlainText -Force) -NoWelcome -ErrorAction Stop
         } catch {
-            Lza92dcb9fd3 "Sign-in did not complete: $($_.Exception.Message)" '#B42318' -Strong
-            Lza92dcb9fd3 'Nothing was changed. You can try again, or use Settings > API settings to enter the details by hand.'
+            Lzdf2e412e8c "Sign-in did not complete: $($_.Exception.Message)" '#B42318' -Strong
+            Lzdf2e412e8c 'Nothing was changed. You can try again, or use Settings > API settings to enter the details by hand.'
             return
         }
     }
     $mgc = Get-MgContext
     $tid = "$($mgc.TenantId)"; if (-not $tid) { $tid = $wizTokTid }
     $wizAcct = "$($mgc.Account)"; if (-not $wizAcct) { $wizAcct = $wizTokAcct }
-    Lza92dcb9fd3 "Signed in to tenant $tid as $wizAcct." '#12B76A'
+    Lzdf2e412e8c "Signed in to tenant $tid as $wizAcct." '#12B76A'
     $newThumb = $null
     try {
-        Lza92dcb9fd3 'Reading the tenant''s Microsoft Graph service catalogue...'
+        Lzdf2e412e8c 'Reading the tenant''s Microsoft Graph service catalogue...'
         $gsp = @((Invoke-MgGraphRequest -Method GET -Uri "https://graph.microsoft.com/v1.0/servicePrincipals?`$filter=appId eq '$graphResId'" -ErrorAction Stop)['value'])
         if (-not $gsp.Count) { throw 'Microsoft Graph''s service principal was not found in this tenant, which should never happen. Stopping.' }
         $graphSp = $gsp[0]
@@ -5037,26 +5402,26 @@ function Lzdd5f8344f9 {
         $found = @((Invoke-MgGraphRequest -Method GET -Uri "https://graph.microsoft.com/v1.0/applications?`$filter=displayName eq '$esc'" -ErrorAction Stop)['value'])
         if ($found.Count) {
             $app = $found[0]
-            if ($found.Count -gt 1) { Lza92dcb9fd3 "Note: $($found.Count) app registrations share the name '$($script:WizAppName)'. Using the oldest; consider removing the duplicates in Microsoft Entra." '#B54708' }
-            Lza92dcb9fd3 "This tenant is already set up: reusing the existing app registration '$($script:WizAppName)' and adding this computer's certificate to it." '#12B76A'
+            if ($found.Count -gt 1) { Lzdf2e412e8c "Note: $($found.Count) app registrations share the name '$($script:WizAppName)'. Using the oldest; consider removing the duplicates in Microsoft Entra." '#B54708' }
+            Lzdf2e412e8c "This tenant is already set up: reusing the existing app registration '$($script:WizAppName)' and adding this computer's certificate to it." '#12B76A'
         } else {
-            Lza92dcb9fd3 "Creating the app registration '$($script:WizAppName)'..."
+            Lzdf2e412e8c "Creating the app registration '$($script:WizAppName)'..."
             $ra = @(); foreach ($rn in $roleNames) { $ra += @{ id = $roles[$rn]; type = 'Role' } }
             $app = Invoke-MgGraphRequest -Method POST -Uri 'https://graph.microsoft.com/v1.0/applications' -Body @{
                 displayName            = $script:WizAppName
                 signInAudience         = 'AzureADMyOrg'
                 requiredResourceAccess = @(@{ resourceAppId = $graphResId; resourceAccess = $ra })
             } -ErrorAction Stop
-            Lza92dcb9fd3 'App registration created.' '#12B76A'
+            Lzdf2e412e8c 'App registration created.' '#12B76A'
         }
         $appId = "$($app['appId'])"; $appObj = "$($app['id'])"
-        Lza92dcb9fd3 'Generating a sign-in certificate for this computer (valid one year)...'
+        Lzdf2e412e8c 'Generating a sign-in certificate for this computer (valid one year)...'
         $subject = "CN=$($script:WizAppName) - $($env:COMPUTERNAME)"
         $cert = New-SelfSignedCertificate -Subject $subject -CertStoreLocation 'Cert:\CurrentUser\My' `
             -KeyAlgorithm RSA -KeyLength 2048 -KeyExportPolicy NonExportable -NotAfter (Get-Date).AddYears(1)
         $newThumb = "$($cert.Thumbprint)"
-        Lza92dcb9fd3 "Certificate created in this user's store. Thumbprint $newThumb." '#12B76A'
-        Lza92dcb9fd3 'Uploading the certificate''s public key to the app registration...'
+        Lzdf2e412e8c "Certificate created in this user's store. Thumbprint $newThumb." '#12B76A'
+        Lzdf2e412e8c 'Uploading the certificate''s public key to the app registration...'
         $before = @((Invoke-MgGraphRequest -Method GET -Uri "https://graph.microsoft.com/v1.0/applications/$appObj`?`$select=keyCredentials" -ErrorAction Stop)['keyCredentials'])
         $keys = @()
         foreach ($k in $before) { $keys += $k }
@@ -5072,7 +5437,7 @@ function Lzdd5f8344f9 {
         if ($after.Count -lt ($before.Count + 1)) {
             throw "The certificate upload finished but the app registration now lists $($after.Count) certificate(s) where $($before.Count + 1) were expected. Check Certificates and secrets on the app registration in Microsoft Entra before running a migration: another machine's certificate may have been dropped."
         }
-        Lza92dcb9fd3 "Public key uploaded. The app registration now holds $($after.Count) certificate(s); private keys stay on their own machines." '#12B76A'
+        Lzdf2e412e8c "Public key uploaded. The app registration now holds $($after.Count) certificate(s); private keys stay on their own machines." '#12B76A'
         $sps = @((Invoke-MgGraphRequest -Method GET -Uri "https://graph.microsoft.com/v1.0/servicePrincipals?`$filter=appId eq '$appId'" -ErrorAction Stop)['value'])
         $spJustCreated = $false
         $sp = if ($sps.Count) { $sps[0] } else {
@@ -5080,8 +5445,8 @@ function Lzdd5f8344f9 {
             Invoke-MgGraphRequest -Method POST -Uri 'https://graph.microsoft.com/v1.0/servicePrincipals' -Body @{ appId = $appId } -ErrorAction Stop
         }
         $spId = "$($sp['id'])"
-        if ($spJustCreated) { Lzc41823b284 -Seconds 15 -Message 'Letting the new app registration settle before granting consent' }
-        Lza92dcb9fd3 'Granting admin consent for the five permissions...'
+        if ($spJustCreated) { Lz6b4feb8d17 -Seconds 15 -Message 'Letting the new app registration settle before granting consent' }
+        Lzdf2e412e8c 'Granting admin consent for the five permissions...'
         $haveRoleIds = @{}
         try {
             foreach ($x in @((Invoke-MgGraphRequest -Method GET -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/$spId/appRoleAssignments?`$top=999" -ErrorAction Stop)['value'])) {
@@ -5102,7 +5467,7 @@ function Lzdd5f8344f9 {
                     $cm = "$($_.Exception.Message) $(try { $_.ErrorDetails.Message } catch { '' })"
                     if ($cm -match 'already exists') { $already++; $done = $true }
                     elseif (($cm -match 'BadRequest|Bad Request|NotFound|Not Found|does not exist|Request_ResourceNotFound') -and $ca -lt 4) {
-                        Lzc41823b284 -Seconds 15 -Message "Permission '$rn' not ready yet (attempt $ca of 4), the new app is still propagating"
+                        Lz6b4feb8d17 -Seconds 15 -Message "Permission '$rn' not ready yet (attempt $ca of 4), the new app is still propagating"
                     } else { throw }
                 }
             }
@@ -5110,11 +5475,11 @@ function Lzdd5f8344f9 {
         $consentMsg = if ($already -and -not $granted) { 'Consent was already in place from an earlier setup.' }
             elseif ($already) { "Consent granted ($granted new, $already already in place)." }
             else { 'Consent granted.' }
-        Lza92dcb9fd3 $consentMsg '#12B76A'
-        Lz72fd4a5484 -Name 'TenantId'       -Value $tid
-        Lz72fd4a5484 -Name 'GraphClientId'  -Value $appId
-        Lz72fd4a5484 -Name 'CertThumbprint' -Value $newThumb
-        Lza92dcb9fd3 'Connection details saved on this computer.' '#12B76A'
+        Lzdf2e412e8c $consentMsg '#12B76A'
+        Lz555805c62d -Name 'TenantId'       -Value $tid
+        Lz555805c62d -Name 'GraphClientId'  -Value $appId
+        Lz555805c62d -Name 'CertThumbprint' -Value $newThumb
+        Lzdf2e412e8c 'Connection details saved on this computer.' '#12B76A'
     } catch {
         $m = "$($_.Exception.Message)"
         $friendly = if ($m -match 'Authorization_RequestDenied|Insufficient privileges|Forbidden') {
@@ -5122,51 +5487,51 @@ function Lzdd5f8344f9 {
         } elseif ($m -match 'AADSTS65004|declined|denied') {
             'The permissions request was declined at the sign-in step. Nothing was set up. Run the wizard again and accept the permissions, or use Settings > API settings to enter the details by hand.'
         } else { $null }
-        if ($friendly) { Lza92dcb9fd3 $friendly '#B42318' -Strong; Lza92dcb9fd3 "Technical detail: $m" }
-        else { Lza92dcb9fd3 "Setup stopped: $m" '#B42318' -Strong }
-        if ($newThumb) { Lza92dcb9fd3 "The certificate generated for this attempt (thumbprint $newThumb) is still in this user's certificate store; re-running the wizard after fixing the cause will create a fresh one, and unused ones can be deleted from certmgr.msc at any time." }
+        if ($friendly) { Lzdf2e412e8c $friendly '#B42318' -Strong; Lzdf2e412e8c "Technical detail: $m" }
+        else { Lzdf2e412e8c "Setup stopped: $m" '#B42318' -Strong }
+        if ($newThumb) { Lzdf2e412e8c "The certificate generated for this attempt (thumbprint $newThumb) is still in this user's certificate store; re-running the wizard after fixing the cause will create a fresh one, and unused ones can be deleted from certmgr.msc at any time." }
         if (-not $ForEmail) { try { Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null } catch {} }
         return
     }
     if (-not $ForEmail) { try { Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null } catch {} }
-    Lza92dcb9fd3 'Checking the new sign-in works (a brand-new setup can take a minute or two to become active)...'
+    Lzdf2e412e8c 'Checking the new sign-in works (a brand-new setup can take a minute or two to become active)...'
     $tok = $null
     for ($i = 1; $i -le 8; $i++) {
         try {
-            $tok = Lz92752b81b9 -TenantId $tid -ClientId $appId -Thumbprint $newThumb
+            $tok = Lzf35a568d05 -TenantId $tid -ClientId $appId -Thumbprint $newThumb
             $rootSite = Invoke-RestMethod -Method GET -Uri 'https://graph.microsoft.com/v1.0/sites/root' -Headers @{ Authorization = "Bearer $tok" } -TimeoutSec 60
             $spUrl = "$($rootSite.webUrl)".TrimEnd('/')
-            Lz72fd4a5484 -Name 'SharePointRootUrl' -Value $spUrl
-            $der = Lz7cca07f98e $spUrl
+            Lz555805c62d -Name 'SharePointRootUrl' -Value $spUrl
+            $der = Lz74f42d6fa7 $spUrl
             if ($der) {
-                Lz72fd4a5484 -Name 'OneDriveHostUrl' -Value $der.OneDriveHostUrl
-                Lz72fd4a5484 -Name 'TeamSiteBaseUrl' -Value $der.TeamSiteBaseUrl
-                Lz72fd4a5484 -Name 'DefaultSiteUrl'  -Value $der.DefaultSiteUrl
+                Lz555805c62d -Name 'OneDriveHostUrl' -Value $der.OneDriveHostUrl
+                Lz555805c62d -Name 'TeamSiteBaseUrl' -Value $der.TeamSiteBaseUrl
+                Lz555805c62d -Name 'DefaultSiteUrl'  -Value $der.DefaultSiteUrl
             }
-            Lza92dcb9fd3 "Sign-in works. SharePoint and OneDrive addresses detected from $spUrl." '#12B76A'
+            Lzdf2e412e8c "Sign-in works. SharePoint and OneDrive addresses detected from $spUrl." '#12B76A'
             break
         } catch {
             $tok = $null
-            if ($i -lt 8) { Lzc41823b284 -Seconds 15 -Message "Not active yet (attempt $i of 8), this is normal for a brand-new setup" }
-            else { Lza92dcb9fd3 "The new sign-in has not become active yet: $($_.Exception.Message)" '#B54708' -Strong
-                   Lza92dcb9fd3 'Everything is saved, so this usually just needs a few more minutes. Use Test connection under Settings > API settings to confirm, and Auto-detect URLs there to fill the addresses.' }
+            if ($i -lt 8) { Lz6b4feb8d17 -Seconds 15 -Message "Not active yet (attempt $i of 8), this is normal for a brand-new setup" }
+            else { Lzdf2e412e8c "The new sign-in has not become active yet: $($_.Exception.Message)" '#B54708' -Strong
+                   Lzdf2e412e8c 'Everything is saved, so this usually just needs a few more minutes. Use Test connection under Settings > API settings to confirm, and Auto-detect URLs there to fill the addresses.' }
         }
     }
     if ($tok) {
         try {
             $org = Invoke-RestMethod -Method GET -Uri 'https://graph.microsoft.com/v1.0/organization' -Headers @{ Authorization = "Bearer $tok" } -TimeoutSec 60
-            $u = Lzd971eea7df $org
-            if ($u) { Lz72fd4a5484 -Name 'UpnDomain' -Value $u; Lza92dcb9fd3 "Email domain detected: $u" '#12B76A' }
-        } catch { Lza92dcb9fd3 'The email (UPN) domain could not be read yet; enter it under Settings > API settings if OneDrive destinations need it.' }
-        Lza92dcb9fd3 'Microsoft 365 setup is COMPLETE. Datto Workplace credentials are the only remaining step (if not already done).' '#12B76A' -Strong
+            $u = Lz6b5a202c07 $org
+            if ($u) { Lz555805c62d -Name 'UpnDomain' -Value $u; Lzdf2e412e8c "Email domain detected: $u" '#12B76A' }
+        } catch { Lzdf2e412e8c 'The email (UPN) domain could not be read yet; enter it under Settings > API settings if OneDrive destinations need it.' }
+        Lzdf2e412e8c 'Microsoft 365 setup is COMPLETE. Datto Workplace credentials are the only remaining step (if not already done).' '#12B76A' -Strong
         $script:WizSetupOk = $true
     }
     if ($script:JobOpen -and $script:ConfigPath) { try { $script:Cfg = Import-ResolvedConfig $script:ConfigPath } catch {} }
 }
-function Lzca1733374f {
+function Lz70acca6b03 {
     Add-Type -AssemblyName PresentationFramework | Out-Null
     $w = New-Object System.Windows.Window
-    Lz7adedfce11 $w
+    Lzbc22fda021 $w
     $w.Title = 'Microsoft 365 setup'
     $w.Width = 680; $w.Height = 560; $w.ResizeMode = 'CanResize'; $w.MinWidth = 560; $w.MinHeight = 420
     $w.FontFamily = 'Segoe UI'; $w.FontSize = 13; $w.Background = 'White'
@@ -5228,16 +5593,16 @@ function Lzca1733374f {
         $script:WZ.BtnRun.IsEnabled = $false
         try {
             $wantEmail = [bool]$script:WZ.ChkEmail.IsChecked
-            Lzdd5f8344f9 -ForEmail:$wantEmail
+            Lzc1357cc043 -ForEmail:$wantEmail
             $emailOkRun = $true
             if ($wantEmail) {
                 $emailOkRun = $false
-                if (Lzec9c4e8c4c) {
-                    Lza92dcb9fd3 'Email alerts: setting up the sender...' -Strong
-                    $ret = @(Invoke-EmailSenderSetup -ReuseGraphSession -Log { param($t, $c) if ($c) { Lza92dcb9fd3 $t $c } else { Lza92dcb9fd3 $t } })
+                if (Lz2c3078b00a) {
+                    Lzdf2e412e8c 'Email alerts: setting up the sender...' -Strong
+                    $ret = @(Invoke-EmailSenderSetup -ReuseGraphSession -Log { param($t, $c) if ($c) { Lzdf2e412e8c $t $c } else { Lzdf2e412e8c $t } })
                     $emailOkRun = ($ret.Count -gt 0 -and $ret[-1] -eq $true)
                 } else {
-                    Lza92dcb9fd3 'Email alerts were not set up, because the Microsoft 365 setup did not complete. Fix that first, then use Settings > Email alerts.' '#B54708'
+                    Lzdf2e412e8c 'Email alerts were not set up, because the Microsoft 365 setup did not complete. Fix that first, then use Settings > Email alerts.' '#B54708'
                 }
             }
             if ($script:WizSetupOk -and $emailOkRun) {
@@ -5256,7 +5621,7 @@ function Lzca1733374f {
                 } catch {}
             }
         } catch {
-            Lza92dcb9fd3 "Setup hit an unexpected problem: $($_.Exception.Message). Nothing was left half-applied that a re-run will not sort out; you can also use Settings > API settings by hand." '#B42318' -Strong
+            Lzdf2e412e8c "Setup hit an unexpected problem: $($_.Exception.Message). Nothing was left half-applied that a re-run will not sort out; you can also use Settings > API settings by hand." '#B42318' -Strong
         } finally {
             try { Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null } catch {}
             try { $script:WZ.BtnRun.IsEnabled = $true; $script:WZ.BtnRun.Content = 'Run again' } catch {}
@@ -5265,17 +5630,17 @@ function Lzca1733374f {
     [void]$w.ShowDialog()
     $script:WZ = $null
 }
-function Lz5157afd059 {
+function Lz4df6b375db {
     return [bool](([string](Get-RegSetting 'EmailEnabled') -eq '1') -and [string](Get-RegSetting 'EmailSender'))
 }
-function Lz0549b23020 {
+function Lz0ea5eae1eb {
     param([string]$Template, [hashtable]$Vars)
     $out = "$Template"
     foreach ($k in @($Vars.Keys)) { $out = $out.Replace('{' + $k + '}', "$($Vars[$k])") }
     $out = [regex]::Replace($out, '\{(JobName|Action|Outcome|Source|Destination|FilesCopied|FilesFailed|Errors|SizeCopied|Duration|StartTime|EndTime|Tenant|Version)\}', '')
     return ([regex]::Replace($out, '\s{2,}', ' ')).Trim()
 }
-function Lz8fe42cd85d {
+function Lz88976feb6d {
     $jn = 'Example job'
     if ($script:JobOpen -and $script:ConfigPath) {
         try { $jj = Join-Path (Split-Path $script:ConfigPath) 'job.json'; if (Test-Path $jj) { $n = (Get-Content $jj -Raw | ConvertFrom-Json).name; if ($n) { $jn = "$n" } } } catch {}
@@ -5306,7 +5671,7 @@ function Invoke-EmailSenderSetup {
         }
     }
     $graphResId = '00000003-0000-0000-c000-000000000000'
-    function Lz1737e76c45 {
+    function Lzf24dd13fd2 {
         if (-not (Get-Module ExchangeOnlineManagement -ListAvailable)) {
             & $say 'Installing the Exchange Online module (one time; this can take a few minutes)...' '#475467'
             Install-Module ExchangeOnlineManagement -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
@@ -5316,11 +5681,11 @@ function Invoke-EmailSenderSetup {
         if (-not $upn) { $upn = "$script:CodeSignInUpn" }
         & $say "Exchange needs its own sign-in (it is a separate service; this is the only extra one). Use the same admin account$(if ($upn) { " ($upn)" })." '#475467'
         $done = $false
-        if (Lzb3f2a06dcf) {
+        if (Lz9c04935af7) {
             & $say 'The app is running elevated, where Microsoft''s standard Exchange sign-in is known to fail - going straight to the code sign-in.' '#B54708'
         } else {
             try {
-                Lz0b64a93c53 -Action {
+                Lzf4ad576b60 -Action {
                     if ($upn) { Connect-ExchangeOnline -ShowBanner:$false -UserPrincipalName $upn -ErrorAction Stop }
                     else { Connect-ExchangeOnline -ShowBanner:$false -ErrorAction Stop }
                 }
@@ -5331,7 +5696,7 @@ function Invoke-EmailSenderSetup {
                 if ($noWam) {
                     & $say 'The Windows sign-in broker failed (a known fault). Opening the sign-in in your browser instead...' '#B54708'
                     try {
-                        Lz0b64a93c53 -Action {
+                        Lzf4ad576b60 -Action {
                             if ($upn) { Connect-ExchangeOnline -ShowBanner:$false -UserPrincipalName $upn -DisableWAM -ErrorAction Stop }
                             else { Connect-ExchangeOnline -ShowBanner:$false -DisableWAM -ErrorAction Stop }
                         }
@@ -5352,19 +5717,19 @@ function Invoke-EmailSenderSetup {
             if ($canTok -and $exoOrg) {
                 try {
                     & $say 'Code sign-in: a small window shows your code (top left, always on top). Enter it in the sign-in page and sign in with the admin account.' '#B54708'
-                    $exoTok = Lzc396e0389c -ClientId 'fb78d390-0c51-40cd-8e17-fdbfab77341b' -Scope 'https://outlook.office365.com/.default' -Say $say `
+                    $exoTok = Lz39910bb941 -ClientId 'fb78d390-0c51-40cd-8e17-fdbfab77341b' -Scope 'https://outlook.office365.com/.default' -Say $say `
                         -Step 'Sign-in 2 of 2: Exchange Online (a separate service with its own sign-in).' `
                         -Purpose 'This sign-in uses your admin account''s existing Exchange access to: create the shared sender mailbox (no licence needed) and restrict the app to sending only from that one address. No new permissions are granted to the app in this step.'
-                    Lz0b64a93c53 -Action { Connect-ExchangeOnline -AccessToken $exoTok -Organization $exoOrg -ShowBanner:$false -ErrorAction Stop }
+                    Lzf4ad576b60 -Action { Connect-ExchangeOnline -AccessToken $exoTok -Organization $exoOrg -ShowBanner:$false -ErrorAction Stop }
                     $done = $true
                 } catch { & $say "The code sign-in did not complete ($($_.Exception.Message)); one more fallback remains." '#B54708' }
             }
             if (-not $done) {
                 & $say 'Falling back to the console code sign-in. The sign-in page is opening in your browser, and the black window holding the CODE is coming to the front: type that code into the browser page.' '#B54708'
-                Lz4db5af1547 -Url 'https://login.microsoft.com/device'
-                Lz46c6ba2224
-                try { Lz0b64a93c53 -Action { Connect-ExchangeOnline -ShowBanner:$false -Device -ErrorAction Stop } }
-                finally { Lzd1b89a4519 }
+                Lzaf025f626e -Url 'https://login.microsoft.com/device'
+                Lz4be3ba3149
+                try { Lzf4ad576b60 -Action { Connect-ExchangeOnline -ShowBanner:$false -Device -ErrorAction Stop } }
+                finally { Lzc00efced2e }
             }
         }
     }
@@ -5386,13 +5751,13 @@ function Invoke-EmailSenderSetup {
     if ($ReuseGraphSession -and $haveCtx) {
         & $say "Using the sign-in from the wizard ($($haveCtx.Account)); no second Microsoft sign-in is needed." '#475467'
     } else {
-        Lz2aa3306616
+        Lz137d185e83
         $esScopes = @('Application.ReadWrite.All','AppRoleAssignment.ReadWrite.All','Organization.Read.All','User.Read.All')
         $esConnected = $false
-        if (-not (Lzb3f2a06dcf)) {
+        if (-not (Lz9c04935af7)) {
             & $say 'A MICROSOFT SIGN-IN WINDOW IS ABOUT TO OPEN. It can hide behind other windows - if you do not see it, check the taskbar. Sign in with your Microsoft 365 admin account.' '#B54708'
             try {
-                Lz0b64a93c53 -Action { Connect-MgGraph -Scopes $esScopes -NoWelcome -ErrorAction Stop }
+                Lzf4ad576b60 -Action { Connect-MgGraph -Scopes $esScopes -NoWelcome -ErrorAction Stop }
                 $esConnected = $true
             } catch {
                 & $say "The standard sign-in did not complete ($($_.Exception.Message)). Switching to a CODE sign-in: a small window will show your code, always on top." '#B54708'
@@ -5402,11 +5767,11 @@ function Invoke-EmailSenderSetup {
         }
         if (-not $esConnected) {
             try {
-                $at = Lzc396e0389c -ClientId '14d82eec-204b-4c2f-b7e8-296a70dab67e' -Scope ($esScopes -join ' ') -Say $say `
+                $at = Lz39910bb941 -ClientId '14d82eec-204b-4c2f-b7e8-296a70dab67e' -Scope ($esScopes -join ' ') -Say $say `
                     -Step 'Sign-in 1 of 2: Microsoft Graph. A second sign-in, for Exchange Online, follows if the sender mailbox needs creating or restricting.' `
                     -Purpose "This sign-in asks your admin account for: Application.ReadWrite.All (add the Mail.Send permission to the app registration), AppRoleAssignment.ReadWrite.All (record admin consent for it), Organization.Read.All (read your verified domains to validate the sender address), User.Read.All (check whether the sender mailbox already exists). Used once, for this setup only - alert emails are sent with the app's certificate, never your account."
-                $tokUpn = Lz3c2293f34e -Token $at -Claim 'upn'
-                if (-not $tokUpn) { $tokUpn = Lz3c2293f34e -Token $at -Claim 'preferred_username' }
+                $tokUpn = Lz38f416d02a -Token $at -Claim 'upn'
+                if (-not $tokUpn) { $tokUpn = Lz38f416d02a -Token $at -Claim 'preferred_username' }
                 if ($tokUpn) { $script:CodeSignInUpn = $tokUpn }
                 Connect-MgGraph -AccessToken (ConvertTo-SecureString $at -AsPlainText -Force) -NoWelcome -ErrorAction Stop
             } catch {
@@ -5489,7 +5854,7 @@ function Invoke-EmailSenderSetup {
             & $say 'The sender mailbox already exists.' '#12B76A'
         } catch { $mailboxExists = $false }
         if (-not $mailboxExists) {
-            Lz1737e76c45
+            Lzf24dd13fd2
             $exoConnected = $true
             $existing = $null
             try { $existing = Get-Recipient -Identity $senderAddr -ErrorAction Stop } catch { $existing = $null }
@@ -5499,7 +5864,7 @@ function Invoke-EmailSenderSetup {
                 & $say "Shared mailbox $senderAddr created (no licence needed). Exchange takes a little while to finish provisioning it; waiting for it to become visible..." '#12B76A'
                 for ($w = 1; $w -le 6; $w++) {
                     try { $null = Get-Recipient -Identity $senderAddr -ErrorAction Stop; break }
-                    catch { if ($w -lt 6) { Lzc41823b284 -Seconds 10 -Message "Still provisioning (check $w of 6)" } }
+                    catch { if ($w -lt 6) { Lz6b4feb8d17 -Seconds 10 -Message "Still provisioning (check $w of 6)" } }
                 }
             } else {
                 & $say 'The sender address already exists in Exchange.' '#12B76A'
@@ -5507,7 +5872,7 @@ function Invoke-EmailSenderSetup {
         }
         try {
             if (-not $exoConnected) {
-                Lz1737e76c45
+                Lzf24dd13fd2
                 $exoConnected = $true
             }
             $scopeName = 'Liscaragh Migration Sender'
@@ -5532,19 +5897,19 @@ function Invoke-EmailSenderSetup {
                     $m2 = "$($_.Exception.Message)"
                     if ($m2 -match 'Enable-OrganizationCustomization' -and $attempt -lt 3) {
                         & $say 'This tenant needs a one-time Exchange setting before custom roles can exist (Enable-OrganizationCustomization; standard on tenants that never customised Exchange).' '#B54708'
-                        Lz524610c4a5 'Applying it now. THIS TAKES UP TO TWO MINUTES and the window may look frozen while Microsoft applies it - that is normal, please do not close it.'
+                        Lze038720f21 'Applying it now. THIS TAKES UP TO TWO MINUTES and the window may look frozen while Microsoft applies it - that is normal, please do not close it.'
                         try { Enable-OrganizationCustomization -ErrorAction Stop } catch { if ("$($_.Exception.Message)" -notmatch 'already') { & $say "Could not apply it: $($_.Exception.Message)" '#B54708' } }
-                        Lzc41823b284 -Seconds 30 -Message 'Applied. Letting it take effect, then retrying the restriction'
+                        Lz6b4feb8d17 -Seconds 30 -Message 'Applied. Letting it take effect, then retrying the restriction'
                     } elseif ($attempt -lt 3) {
-                        Lzc41823b284 -Seconds 15 -Message 'Retrying the restriction'
+                        Lz6b4feb8d17 -Seconds 15 -Message 'Retrying the restriction'
                     } else { throw }
                 }
             }
         } catch {
             & $say "Could not restrict sending to the one mailbox automatically: $($_.Exception.Message). Email alerts still work; the app can currently send as any mailbox, so consider applying the restriction by hand (steps at https://www.liscaragh.com)." '#B54708'
         }
-        Lz72fd4a5484 -Name 'EmailSender' -Value $senderAddr
-        Lz72fd4a5484 -Name 'EmailEnabled' -Value '1'
+        Lz555805c62d -Name 'EmailSender' -Value $senderAddr
+        Lz555805c62d -Name 'EmailEnabled' -Value '1'
         & $say "Email sender setup is COMPLETE. Alerts will send from $senderAddr; choose recipients under Settings > Email alerts. Prefer a different address or domain? Type it in the Send from box there and click Set up sender - it creates the mailbox and moves the send restriction over." '#12B76A'
         $ok = $true
     } catch {
@@ -5559,10 +5924,10 @@ function Invoke-EmailSenderSetup {
     }
     return $ok
 }
-function Lz045cf06793 {
+function Lz51a627d6a5 {
     Add-Type -AssemblyName PresentationFramework | Out-Null
     $win2 = New-Object System.Windows.Window
-    Lz7adedfce11 $win2
+    Lzbc22fda021 $win2
     $win2.Title = 'Email alerts'; $win2.SizeToContent = 'Height'; $win2.Width = 620
     $win2.WindowStartupLocation = 'CenterScreen'; $win2.ResizeMode = 'NoResize'
     try {
@@ -5574,8 +5939,8 @@ function Lz045cf06793 {
     $intro = New-Object System.Windows.Controls.TextBlock
     $intro.Text = 'When a run finishes, an email can be sent with the outcome, the report and the logs. It is sent from your own Microsoft 365 tenant, so it works for scheduled and overnight runs with nobody watching. Settings are per computer; a failed email never affects the migration itself.'
     $intro.TextWrapping = 'Wrap'; $intro.Foreground = 'Gray'; $intro.Margin = '0,0,0,6'; [void]$root.Children.Add($intro)
-    function Lzaff30ebe3e { param($Text) $h = New-Object System.Windows.Controls.TextBlock; $h.Text = $Text; $h.FontWeight = 'Bold'; $h.Margin = '0,12,0,4'; [void]$root.Children.Add($h) }
-    function Lz78159df896 { param($Label, $Control, $Info)
+    function Lz02ba7eb68f { param($Text) $h = New-Object System.Windows.Controls.TextBlock; $h.Text = $Text; $h.FontWeight = 'Bold'; $h.Margin = '0,12,0,4'; [void]$root.Children.Add($h) }
+    function Lzf8aa4053ed { param($Label, $Control, $Info)
         $g = New-Object System.Windows.Controls.Grid
         foreach ($w in '150','400','40') { $c = New-Object System.Windows.Controls.ColumnDefinition; $c.Width = $w; $g.ColumnDefinitions.Add($c) }
         $l = New-Object System.Windows.Controls.TextBlock; $l.Text = $Label; $l.VerticalAlignment = 'Center'; $l.Margin = '0,3,8,3'; $l.TextWrapping = 'Wrap'
@@ -5594,9 +5959,9 @@ function Lz045cf06793 {
     $chkOn.Content = 'Send an email when a run finishes'; $chkOn.Margin = '0,4,0,2'; $chkOn.FontWeight = 'SemiBold'
     $chkOn.IsChecked = ((& $regOr 'EmailEnabled' '0') -eq '1')
     [void]$root.Children.Add($chkOn)
-    Lzaff30ebe3e 'Sender and recipients'
+    Lz02ba7eb68f 'Sender and recipients'
     $tbFrom = New-Object System.Windows.Controls.TextBox; $tbFrom.Margin = '0,3,0,3'; $tbFrom.Text = [string](Get-RegSetting 'EmailSender')
-    [void](Lz78159df896 -Label 'Send from' -Control $tbFrom -Info 'The mailbox the alerts are sent from, in your own Microsoft 365 tenant. Type ANY address you like (any name, any of your tenant''s verified domains) and click "Set up sender": it creates that shared mailbox if needed (no licence) and points the send restriction at it. Leave it empty for the default, datto-migration@your-domain. An existing mailbox address also works - but if the send restriction was applied earlier, click "Set up sender" after changing the address, or sending stays locked to the old one.')
+    [void](Lzf8aa4053ed -Label 'Send from' -Control $tbFrom -Info 'The mailbox the alerts are sent from, in your own Microsoft 365 tenant. Type ANY address you like (any name, any of your tenant''s verified domains) and click "Set up sender": it creates that shared mailbox if needed (no licence) and points the send restriction at it. Leave it empty for the default, datto-migration@your-domain. An existing mailbox address also works - but if the send restriction was applied earlier, click "Set up sender" after changing the address, or sending stays locked to the old one.')
     $btnSetupSender = New-Object System.Windows.Controls.Button; $btnSetupSender.Content = 'Set up sender...'; $btnSetupSender.Padding = '8,3'; $btnSetupSender.Margin = '150,2,0,2'; $btnSetupSender.HorizontalAlignment = 'Left'
     [void]$root.Children.Add($btnSetupSender)
     $senderScroll = New-Object System.Windows.Controls.ScrollViewer; $senderScroll.MaxHeight = 160; $senderScroll.VerticalScrollBarVisibility = 'Auto'
@@ -5606,29 +5971,29 @@ function Lz045cf06793 {
     $tbTo = New-Object System.Windows.Controls.TextBox; $tbTo.Margin = '0,3,0,3'
     $tbTo.AcceptsReturn = $true; $tbTo.Height = 58; $tbTo.VerticalScrollBarVisibility = 'Auto'; $tbTo.VerticalContentAlignment = 'Top'
     $tbTo.Text = ((([string](Get-RegSetting 'EmailRecipients')) -split '[;,\r\n]+' | ForEach-Object { "$_".Trim() } | Where-Object { $_ }) -join [Environment]::NewLine)
-    [void](Lz78159df896 -Label 'Send to' -Control $tbTo -Info 'Who receives the alerts. Put ONE address per line (press Enter for the next one). A pasted list separated with ; or , also works.')
+    [void](Lzf8aa4053ed -Label 'Send to' -Control $tbTo -Info 'Who receives the alerts. Put ONE address per line (press Enter for the next one). A pasted list separated with ; or , also works.')
     $toHint = New-Object System.Windows.Controls.TextBlock
     $toHint.Text = 'One address per line. For example:  msp@contoso.com  then  oncall@contoso.com  on the next line.'
     $toHint.Foreground = 'Gray'; $toHint.FontSize = 11; $toHint.Margin = '150,0,0,4'; $toHint.TextWrapping = 'Wrap'
     [void]$root.Children.Add($toHint)
-    Lzaff30ebe3e 'When to send'
+    Lz02ba7eb68f 'When to send'
     $outRow = New-Object System.Windows.Controls.StackPanel; $outRow.Orientation = 'Horizontal'
     $chkOk = New-Object System.Windows.Controls.CheckBox; $chkOk.Content = 'Success'; $chkOk.Margin = '0,2,16,2'; $chkOk.IsChecked = ((& $regOr 'EmailOnSuccess' '1') -eq '1')
     $chkWarn = New-Object System.Windows.Controls.CheckBox; $chkWarn.Content = 'Completed with warnings'; $chkWarn.Margin = '0,2,16,2'; $chkWarn.IsChecked = ((& $regOr 'EmailOnWarning' '1') -eq '1')
     $chkBad = New-Object System.Windows.Controls.CheckBox; $chkBad.Content = 'Failure / ended early'; $chkBad.Margin = '0,2,0,2'; $chkBad.IsChecked = ((& $regOr 'EmailOnFailure' '1') -eq '1')
     [void]$outRow.Children.Add($chkOk); [void]$outRow.Children.Add($chkWarn); [void]$outRow.Children.Add($chkBad)
-    [void](Lz78159df896 -Label 'Outcomes' -Control $outRow -Info 'Which results trigger an email. For unattended overnight runs, at least "Failure / ended early" is strongly recommended.')
+    [void](Lzf8aa4053ed -Label 'Outcomes' -Control $outRow -Info 'Which results trigger an email. For unattended overnight runs, at least "Failure / ended early" is strongly recommended.')
     $actRow = New-Object System.Windows.Controls.StackPanel; $actRow.Orientation = 'Horizontal'
     $chkFull = New-Object System.Windows.Controls.CheckBox; $chkFull.Content = 'Full upload'; $chkFull.Margin = '0,2,16,2'; $chkFull.IsChecked = ((& $regOr 'EmailOnTransfer' '1') -eq '1')
     $chkSync = New-Object System.Windows.Controls.CheckBox; $chkSync.Content = 'Sync'; $chkSync.Margin = '0,2,16,2'; $chkSync.IsChecked = ((& $regOr 'EmailOnDelta' '1') -eq '1')
     $chkVer = New-Object System.Windows.Controls.CheckBox; $chkVer.Content = 'Verify'; $chkVer.Margin = '0,2,16,2'; $chkVer.IsChecked = ((& $regOr 'EmailOnValidate' '1') -eq '1')
     $chkCmp = New-Object System.Windows.Controls.CheckBox; $chkCmp.Content = 'Compare sizes'; $chkCmp.Margin = '0,2,0,2'; $chkCmp.IsChecked = ((& $regOr 'EmailOnSizeCheck' '1') -eq '1')
     [void]$actRow.Children.Add($chkFull); [void]$actRow.Children.Add($chkSync); [void]$actRow.Children.Add($chkVer); [void]$actRow.Children.Add($chkCmp)
-    [void](Lz78159df896 -Label 'Actions' -Control $actRow -Info 'Which run types trigger an email. Previews never send one (they change nothing).')
-    Lzaff30ebe3e 'Subject and attachments'
+    [void](Lzf8aa4053ed -Label 'Actions' -Control $actRow -Info 'Which run types trigger an email. Previews never send one (they change nothing).')
+    Lz02ba7eb68f 'Subject and attachments'
     $tbSubj = New-Object System.Windows.Controls.TextBox; $tbSubj.Margin = '0,3,0,3'
     $tbSubj.Text = (& $regOr 'EmailSubject' 'Liscaragh migration - {Action} {Outcome}: {JobName}')
-    [void](Lz78159df896 -Label 'Subject' -Control $tbSubj -Info ('The email subject. These placeholders are filled in from the run: {JobName} {Action} {Outcome} {Source} {Destination} {FilesCopied} {FilesFailed} {Errors} {SizeCopied} {Duration} {StartTime} {EndTime} {Tenant} {Version}. Checks (Verify, Compare sizes) fill the ones that apply to them; the rest are left out.'))
+    [void](Lzf8aa4053ed -Label 'Subject' -Control $tbSubj -Info ('The email subject. These placeholders are filled in from the run: {JobName} {Action} {Outcome} {Source} {Destination} {FilesCopied} {FilesFailed} {Errors} {SizeCopied} {Duration} {StartTime} {EndTime} {Tenant} {Version}. Checks (Verify, Compare sizes) fill the ones that apply to them; the rest are left out.'))
     $lblPrev = New-Object System.Windows.Controls.TextBlock; $lblPrev.TextWrapping = 'Wrap'; $lblPrev.Foreground = 'Gray'; $lblPrev.FontSize = 11; $lblPrev.Margin = '150,0,0,4'
     [void]$root.Children.Add($lblPrev)
     $chkAtt = New-Object System.Windows.Controls.CheckBox
@@ -5650,7 +6015,7 @@ function Lz045cf06793 {
         tbSubj = $tbSubj; lblPrev = $lblPrev; chkAtt = $chkAtt; lblStatus = $lblStatus
     }
     $updatePrev = {
-        try { $script:ES.lblPrev.Text = 'Preview:  ' + (Lz0549b23020 -Template $script:ES.tbSubj.Text -Vars (Lz8fe42cd85d)) } catch {}
+        try { $script:ES.lblPrev.Text = 'Preview:  ' + (Lz0ea5eae1eb -Template $script:ES.tbSubj.Text -Vars (Lz88976feb6d)) } catch {}
     }
     $tbSubj.Add_TextChanged($updatePrev)
     & $updatePrev
@@ -5688,8 +6053,8 @@ function Lz045cf06793 {
             if (-not $tid -or -not $app -or -not $th) { $script:ES.lblStatus.Text = 'Set up the Microsoft 365 connection first (the wizard, or API settings).'; $script:ES.lblStatus.Foreground = 'Red'; return }
             $to = @()
             foreach ($r in ($toRaw -split '[;,\r\n]+')) { $a = "$r".Trim(); if ($a) { $to += @{ emailAddress = @{ address = $a } } } }
-            $subj = Lz0549b23020 -Template ("$($script:ES.tbSubj.Text)") -Vars (Lz8fe42cd85d)
-            $tok = Lz92752b81b9 -TenantId $tid -ClientId $app -Thumbprint $th
+            $subj = Lz0ea5eae1eb -Template ("$($script:ES.tbSubj.Text)") -Vars (Lz88976feb6d)
+            $tok = Lzf35a568d05 -TenantId $tid -ClientId $app -Thumbprint $th
             $body = @{ message = @{ subject = "TEST - $subj"
                         body = @{ contentType = 'Text'; content = 'This is a test email from the Datto Workplace to SharePoint Migrator. If you are reading it, email alerts are working. Real alerts include the outcome, the report and the logs.' }
                         toRecipients = $to }
@@ -5704,18 +6069,18 @@ function Lz045cf06793 {
     $btnSave.Add_Click({
         try {
             $b = { param($c) if ($c.IsChecked) { '1' } else { '0' } }
-            Lz72fd4a5484 -Name 'EmailEnabled'    -Value (& $b $script:ES.chkOn)
-            Lz72fd4a5484 -Name 'EmailSender'     -Value ("$($script:ES.tbFrom.Text)".Trim())
-            Lz72fd4a5484 -Name 'EmailRecipients' -Value ((("$($script:ES.tbTo.Text)" -split '[;,\r\n]+' | ForEach-Object { "$_".Trim() } | Where-Object { $_ })) -join '; ')
-            Lz72fd4a5484 -Name 'EmailSubject'    -Value ("$($script:ES.tbSubj.Text)".Trim())
-            Lz72fd4a5484 -Name 'EmailOnSuccess'  -Value (& $b $script:ES.chkOk)
-            Lz72fd4a5484 -Name 'EmailOnWarning'  -Value (& $b $script:ES.chkWarn)
-            Lz72fd4a5484 -Name 'EmailOnFailure'  -Value (& $b $script:ES.chkBad)
-            Lz72fd4a5484 -Name 'EmailOnTransfer' -Value (& $b $script:ES.chkFull)
-            Lz72fd4a5484 -Name 'EmailOnDelta'    -Value (& $b $script:ES.chkSync)
-            Lz72fd4a5484 -Name 'EmailOnValidate' -Value (& $b $script:ES.chkVer)
-            Lz72fd4a5484 -Name 'EmailOnSizeCheck'-Value (& $b $script:ES.chkCmp)
-            Lz72fd4a5484 -Name 'EmailAttach'     -Value (& $b $script:ES.chkAtt)
+            Lz555805c62d -Name 'EmailEnabled'    -Value (& $b $script:ES.chkOn)
+            Lz555805c62d -Name 'EmailSender'     -Value ("$($script:ES.tbFrom.Text)".Trim())
+            Lz555805c62d -Name 'EmailRecipients' -Value ((("$($script:ES.tbTo.Text)" -split '[;,\r\n]+' | ForEach-Object { "$_".Trim() } | Where-Object { $_ })) -join '; ')
+            Lz555805c62d -Name 'EmailSubject'    -Value ("$($script:ES.tbSubj.Text)".Trim())
+            Lz555805c62d -Name 'EmailOnSuccess'  -Value (& $b $script:ES.chkOk)
+            Lz555805c62d -Name 'EmailOnWarning'  -Value (& $b $script:ES.chkWarn)
+            Lz555805c62d -Name 'EmailOnFailure'  -Value (& $b $script:ES.chkBad)
+            Lz555805c62d -Name 'EmailOnTransfer' -Value (& $b $script:ES.chkFull)
+            Lz555805c62d -Name 'EmailOnDelta'    -Value (& $b $script:ES.chkSync)
+            Lz555805c62d -Name 'EmailOnValidate' -Value (& $b $script:ES.chkVer)
+            Lz555805c62d -Name 'EmailOnSizeCheck'-Value (& $b $script:ES.chkCmp)
+            Lz555805c62d -Name 'EmailAttach'     -Value (& $b $script:ES.chkAtt)
             if ($script:ES.chkOn.IsChecked -and (-not "$($script:ES.tbFrom.Text)".Trim() -or -not "$($script:ES.tbTo.Text)".Trim())) {
                 (Show-Msg -Text ("Saved, but alerts will not send yet: the sender or recipients are empty.`n`nUse 'Set up sender' to create the sender mailbox, and enter at least one recipient.") -Caption ('Email alerts') -Icon ('Warning')) | Out-Null
             } else {
@@ -5727,7 +6092,7 @@ function Lz045cf06793 {
     [void]$win2.ShowDialog()
     $script:ES = $null
 }
-function Lz3f4cc4f016 {
+function Lzab79843e89 {
     param([switch]$Tenant, [switch]$Exchange, [switch]$Local, [scriptblock]$Log)
     if (-not $Log) { $Log = { } }
     $say = { param($t, $c) try { & $Log $t $c } catch {} }
@@ -5737,7 +6102,7 @@ function Lz3f4cc4f016 {
     if ($Tenant) {
         try {
             & $say 'Tenant clean-up: one Microsoft sign-in is needed. Use an admin account.' '#475467'
-            $at = Lzc396e0389c -ClientId '14d82eec-204b-4c2f-b7e8-296a70dab67e' -Scope 'Application.ReadWrite.All User.ReadWrite.All Organization.Read.All' -Say $say `
+            $at = Lz39910bb941 -ClientId '14d82eec-204b-4c2f-b7e8-296a70dab67e' -Scope 'Application.ReadWrite.All User.ReadWrite.All Organization.Read.All' -Say $say `
                 -Step $(if ($Exchange) { 'Sign-in 1 of 2: Microsoft Graph (the Exchange scrub adds a second).' } else { 'The only sign-in for this removal: Microsoft Graph.' }) `
                 -Purpose 'This sign-in asks your admin account for: Application.ReadWrite.All (delete the app registration), User.ReadWrite.All (delete the datto-migration@ shared mailbox), Organization.Read.All (read your verified domains to find it). Used once, for this removal only.'
             $hdr = @{ Authorization = "Bearer $at" }
@@ -5805,7 +6170,7 @@ function Lz3f4cc4f016 {
                 if (-not $exoOrg -and $regSender -and $regSender.Contains('@')) { $exoOrg = ($regSender -split '@')[1] }
                 if ($canTok -and $exoOrg) {
                     & $say 'Exchange needs its own sign-in (the second and last one).' '#475467'
-                    $exoTok = Lzc396e0389c -ClientId 'fb78d390-0c51-40cd-8e17-fdbfab77341b' -Scope 'https://outlook.office365.com/.default' -Say $say `
+                    $exoTok = Lz39910bb941 -ClientId 'fb78d390-0c51-40cd-8e17-fdbfab77341b' -Scope 'https://outlook.office365.com/.default' -Say $say `
                         -Step 'Sign-in 2 of 2: Exchange Online.' `
                         -Purpose 'This sign-in uses your admin account''s existing Exchange access to remove the send restriction (the role assignment, the scope and the Exchange service principal). Nothing else is touched.'
                     Connect-ExchangeOnline -AccessToken $exoTok -Organization $exoOrg -ShowBanner:$false -ErrorAction Stop
@@ -5863,10 +6228,10 @@ function Lz3f4cc4f016 {
     }
     return ($problems -eq 0)
 }
-function Lz372fbf0e86 {
+function Lz032f318119 {
     Add-Type -AssemblyName PresentationFramework | Out-Null
     $win2 = New-Object System.Windows.Window
-    Lz7adedfce11 $win2
+    Lzbc22fda021 $win2
     $win2.Title = 'Remove set-up (decommission)'; $win2.SizeToContent = 'Height'; $win2.Width = 640
     $win2.WindowStartupLocation = 'CenterScreen'; $win2.ResizeMode = 'NoResize'
     try { if ($win -and $win.IsVisible) { $win2.Owner = $win; $win2.WindowStartupLocation = 'CenterOwner' } } catch {}
@@ -5929,10 +6294,10 @@ function Lz372fbf0e86 {
             if ("$($script:DX.tbConfirm.Text)".Trim() -cne 'REMOVE') { & $sayUi 'Type REMOVE (in capitals) in the confirmation box first.' '#B42318'; return }
             if (-not ($script:DX.chkTenant.IsChecked -or $script:DX.chkLocal.IsChecked -or $script:DX.chkExo.IsChecked)) { & $sayUi 'Tick at least one of the options above.' '#B42318'; return }
             $script:DX.btnGo.IsEnabled = $false
-            $okD = Lz3f4cc4f016 -Tenant:([bool]$script:DX.chkTenant.IsChecked) -Exchange:([bool]$script:DX.chkExo.IsChecked) -Local:([bool]$script:DX.chkLocal.IsChecked) -Log $sayUi
+            $okD = Lzab79843e89 -Tenant:([bool]$script:DX.chkTenant.IsChecked) -Exchange:([bool]$script:DX.chkExo.IsChecked) -Local:([bool]$script:DX.chkLocal.IsChecked) -Log $sayUi
             if ($okD) { & $sayUi 'Decommission finished with nothing outstanding.' '#12B76A' }
             else { & $sayUi 'Decommission finished, but some steps need a hand-check (the red and amber lines above).' '#B54708'; $script:DX.btnGo.IsEnabled = $true }
-            try { if ($script:SC -and $script:SC.Win -and $script:SC.Win.IsVisible) { Lz08cf33d390 } } catch {}
+            try { if ($script:SC -and $script:SC.Win -and $script:SC.Win.IsVisible) { Lz3c1f2dd80b } } catch {}
         } catch {
             try {
                 $tbE = New-Object System.Windows.Controls.TextBlock
@@ -5944,28 +6309,28 @@ function Lz372fbf0e86 {
     [void]$win2.ShowDialog()
     $script:DX = $null
 }
-function Lzd9c65bff0d {
-    return ((Lz3ef81ab6e1) -and (Lzec9c4e8c4c))
+function Lz2de1d1c416 {
+    return ((Lzf2ab28e4f9) -and (Lz2c3078b00a))
 }
-Lz959fd73c5b
-Lzd1b89a4519
+Lz4420d874c8
+Lzc00efced2e
 $win.Dispatcher.Add_UnhandledException({
     $ev = $args[1]
-    try { Lzc164eb2021 "[app] An unexpected background error was contained (the app carries on): $($ev.Exception.Message)" } catch {}
+    try { Lz37b8b56fb4 "[app] An unexpected background error was contained (the app carries on): $($ev.Exception.Message)" } catch {}
     $ev.Handled = $true
 })
 $win.Add_ContentRendered({
     if ($script:OnboardShown) { return }
     $script:OnboardShown = $true
-    if (-not (Lzd9c65bff0d)) {
-        try { Lz69bc5552ba } catch {}
-        if (Lzd9c65bff0d) { Lz20a2195fff 'Connection ready. Create a migration with Job > New, or open an existing one.' }
-        else { Lz20a2195fff 'Finish setup any time: the checklist reappears at startup, and each step is under Settings.' }
+    if (-not (Lz2de1d1c416)) {
+        try { Lzef5e6f6fbd } catch {}
+        if (Lz2de1d1c416) { Lzcd3b6c7e2b 'Connection ready. Create a migration with Job > New, or open an existing one.' }
+        else { Lzcd3b6c7e2b 'Finish setup any time: the checklist reappears at startup, and each step is under Settings.' }
     } elseif (-not $script:JobOpen) {
-        Lz20a2195fff 'Connection ready. Create a migration with Job > New, or open an existing one.'
+        Lzcd3b6c7e2b 'Connection ready. Create a migration with Job > New, or open an existing one.'
     }
-    if ((Lzd9c65bff0d) -and -not (Test-Path (Lzf9768115ec))) {
-        try { Lz62db661148 } catch {}
+    if ((Lz2de1d1c416) -and -not (Test-Path (Lz8a2e8034ba))) {
+        try { Lz5d8bdbb9d0 } catch {}
     }
 })
 try {
@@ -5978,4 +6343,6 @@ try {
     $h = [Liscaragh.ConsoleWin]::GetConsoleWindow()
     if ($attached -le 1 -and $h -ne [System.IntPtr]::Zero) { [void][Liscaragh.ConsoleWin]::ShowWindow($h, 0) }
 } catch {}
+Lz2f751c5673
+$win.Add_Closed({ Lz37c47c4323 })
 [void]$win.ShowDialog()
