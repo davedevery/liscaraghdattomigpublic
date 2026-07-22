@@ -1,6 +1,6 @@
 # Liscara update feed
 
-This public repository is the update feed for the Datto Workplace to SharePoint Migrator
+This public repository is the update feed for the Liscaragh Migrate
 (Liscaragh Software). The app's **Help > Check for updates** reads `update.json` here.
 
 - `update.json` - a signed descriptor: version, notes, and the files to apply (each with a SHA256).
