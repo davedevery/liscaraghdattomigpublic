@@ -26,12 +26,12 @@ try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); $Outp
 $script:VerboseFiles = [bool]$VerboseFiles
 $script:GuiMode = [bool]$GuiMode
 $script:UseEnumCache = [bool]$UseEnumCache
-function Lzec4f69cda8 { param([int]$Done,[int]$Total,[int64]$BytesDone,[int64]$BytesTotal,[string]$Space,
+function Lzf9ecd5acef { param([int]$Done,[int]$Total,[int64]$BytesDone,[int64]$BytesTotal,[string]$Space,
         [int]$SmallDone=0,[int]$SmallTotal=0,[int64]$LargeBytesDone=0,[int64]$LargeBytesTotal=0,[int]$Final=1)
     if ($script:GuiMode) { Write-Host "##PROGRESS##|$Done|$Total|$BytesDone|$BytesTotal|$SmallDone|$SmallTotal|$LargeBytesDone|$LargeBytesTotal|$Final|$Space" }
 }
 $script:LastThrMax = -1; $script:LastThrPaused = $false
-function Lz921ef6fd54 { param([int]$Max,[int]$HardMax,[int]$PausedSeconds,[int]$Events,[int]$Code=0)
+function Lzac90d7822d { param([int]$Max,[int]$HardMax,[int]$PausedSeconds,[int]$Events,[int]$Code=0)
     if ($script:GuiMode) { Write-Host "##THROTTLE##|$Max|$HardMax|$PausedSeconds|$Events|$Code" }
 }
 $script:LogFile = $null
@@ -57,7 +57,7 @@ $script:SrcTotal = 0
 $script:DattoPace = [hashtable]::Synchronized(@{ GapMs = 0; NextTicks = [int64]0; MaxMs = 8000; FloorMs = 0; HeadersSeen = $false; ReqCount = 0; WindowStartTicks = [int64]0; LastProbeTicks = [int64]0 })
 $script:DattoLastHeaders = $null
 $script:DattoBudgetLogAt = $null
-function Lz7f1a28dc35 {
+function Lz5366308c24 {
     $p = $script:DattoPace
     if ($p.GapMs -le 0) { return }
     $sleepMs = 0
@@ -70,7 +70,7 @@ function Lz7f1a28dc35 {
     } finally { [System.Threading.Monitor]::Exit($p.SyncRoot) }
     if ($sleepMs -gt 0) { Start-Sleep -Milliseconds $sleepMs }
 }
-function Lz8f4fdbd6fe {
+function Lzc16f2c5e11 {
     param($Headers)
     $r = @{ HasBudget=$false; Remaining=$null; Limit=$null; ResetSec=$null; Raw=@() }
     if (-not $Headers) { return $r }
@@ -93,10 +93,10 @@ function Lz8f4fdbd6fe {
     if ($null -ne $r.Remaining) { $r.HasBudget = $true }
     return $r
 }
-function Lza30360eaa6 {
+function Lz016907e11a {
     param($Headers)
     $p = $script:DattoPace
-    $rl = Lz8f4fdbd6fe $Headers
+    $rl = Lzc16f2c5e11 $Headers
     if (-not $rl.HasBudget) {
         [System.Threading.Monitor]::Enter($p.SyncRoot)
         try {
@@ -311,7 +311,7 @@ function Import-MigrationConfig {
     }
     return $cfg
 }
-function Lz5716c7978d {
+function Lz42ecc394a1 {
     param($Config, [string] $Stage, [string] $Friendly = '')
     if (-not $Friendly) {
         $Friendly = switch ($Stage) {
@@ -333,7 +333,7 @@ function Lz5716c7978d {
         }
     }
     $script:LogFile = Join-Path $Config.run.logRoot ("$Friendly - " + (Get-Date -Format 'yyyy-MM-dd HH.mm.ss') + " - $Stage-$PID.log")
-    $tv = Lza152ab30c8
+    $tv = Lz45647fd8e5
     Write-MigrationLog INFO ("=== Stage '$Stage' started (pid $PID" + $(if ($tv) { ", v$tv" } else { '' }) + ") ===")
 }
 $script:ConfigEntropy   = [Text.Encoding]::UTF8.GetBytes('Liscaragh.DattoMigration.config.v1')
@@ -499,7 +499,7 @@ function Write-RenameRecord {
         Write-MigrationLog INFO "  tidied name(s) to suit SharePoint in: $dir  (every change is listed in the report and the renames CSV)"
     }
 }
-function Lzba2005b103 {
+function Lz9019fe43f4 {
     param([string]$Space, [string]$Final, [string]$FirstSource, [string]$SecondSource)
     $script:CollisionCount++
     if ($script:CollisionFile) { try { [pscustomobject][ordered]@{ Space=$Space; Final=$Final; FirstSource=$FirstSource; SecondSource=$SecondSource } | Protect-CsvRow | Export-Csv -Path $script:CollisionFile -Append -NoTypeInformation -Encoding UTF8 } catch {} }
@@ -529,14 +529,14 @@ function Resolve-SafeRelPathTracked {
                 $pSpace, $pRp = "$prev".Split('|', 2)
                 $first = if ($pSpace -ne $Space) { "$pRp (from $pSpace)" } else { $pRp }
                 $second = if ($pSpace -ne $Space) { "$Rp (from $Space)" } else { $Rp }
-                Lzba2005b103 -Space $Space -Final $safe -FirstSource $first -SecondSource $second
+                Lz9019fe43f4 -Space $Space -Final $safe -FirstSource $first -SecondSource $second
             }
         }
         else { $script:FinalSeen[$k] = $me }
     }
     return $safe
 }
-function Lz5669edadca {
+function Lz305671cacc {
     param([string]$Activity, [string]$Status, [int]$Current, [int]$Total, [int]$Id = 1)
     $pct = if ($Total -gt 0) { [int]([math]::Min(100, ($Current / $Total) * 100)) } else { 100 }
     try { Write-Progress -Id $Id -Activity $Activity -Status ("{0} ({1}/{2}, {3}%)" -f $Status,$Current,$Total,$pct) -PercentComplete $pct } catch {}
@@ -556,7 +556,7 @@ function Get-RetryAfterSeconds {
     if ($ra -lt 0) { $ra = 0 }
     return $ra
 }
-function Lz55786922bf {
+function Lz0b5da378ff {
     param([int]$Attempt, $Throttle, [int]$RetryAfter = 0, [int]$Cap = 300)
     $base = [double]$Throttle.baseDelaySeconds; if ($base -le 0) { $base = 5 }
     if ($Throttle.honorRetryAfter -and $RetryAfter -gt 0) {
@@ -567,7 +567,7 @@ function Lz55786922bf {
     $d = ($exp / 2.0) + (Get-Random -Minimum 0.0 -Maximum ($exp / 2.0))
     return [int][math]::Max(1, [math]::Ceiling($d))
 }
-function Lz61aafe5a69 {
+function Lzc4154144ff {
     param($ErrorRecord)
     $status = $null; try { $status = $ErrorRecord.Exception.Response.StatusCode.value__ } catch {}
     if ($status) { return $false }
@@ -587,7 +587,7 @@ function Invoke-WithRetry {
             $status = $null; try { $status = $_.Exception.Response.StatusCode.value__ } catch {}
             $ra = Get-RetryAfterSeconds $_
             $isThrottle = (@(429, 503) -contains $status)
-            $isTransient = Lz61aafe5a69 $_
+            $isTransient = Lzc4154144ff $_
             $cap = if ($isThrottle) { $throttleMax } else { [int]$t.maxRetries }
             if ((($retryCodes -notcontains $status) -and (-not $isTransient)) -or $a -ge $cap) {
                 if (-not ($QuietNotFound -and $status -eq 404)) {
@@ -595,7 +595,7 @@ function Invoke-WithRetry {
                 }
                 throw
             }
-            $delay = Lz55786922bf -Attempt $a -Throttle $t -RetryAfter $ra
+            $delay = Lz0b5da378ff -Attempt $a -Throttle $t -RetryAfter $ra
             if ($isTransient) {
                 Write-MigrationLog WARN "$What hit a network blip and is retrying in $delay s (attempt $a/$cap): $($_.Exception.Message). In plain terms: a brief connection glitch, not a real failure. It retries here so nothing has to wait for a later Sync."
             } elseif ($What -like 'Datto*' -and @(429,503) -contains $status) {
@@ -757,7 +757,7 @@ function Invoke-SpoolDownload {
     } finally { $c.Dispose(); $h.Dispose() }
 }
 $script:SpoolHelperSource = (@('Save-SpoolStream','Save-SpoolFile','Get-SpoolLength','Open-SpoolRead','Copy-SpoolToFile','Read-SpoolChunk','Send-SpoolHttp','Invoke-SpoolDownload') | ForEach-Object { "function $_ { $((Get-Item "function:$_").Definition) }" }) -join "`n"
-function Lz067d132e5b {
+function Lzfafab39808 {
     param([Parameter(Mandatory)] [string] $Path)
     $WIDTH = 160; $SHIFT = 11
     $data = [byte[]]::new([math]::Ceiling($WIDTH/8.0))
@@ -787,7 +787,7 @@ function Get-DattoAuthHeader {
     $pair = [Text.Encoding]::UTF8.GetBytes("$id`:$secret")
     return @{ Authorization = 'Basic ' + [Convert]::ToBase64String($pair) }
 }
-function Lz53d5cf954b {
+function Lzdb130f4b19 {
     param($Config)
     if ("$($Config.source.provider)" -eq 'LocalFs') { Write-MigrationLog OK "Source: local files and folders ($(@($Config.source.localRoots).Count) root folder(s)). No source sign-in needed."; return }
     if ($Config.datto.provider -eq 'LocalSim') { Write-MigrationLog OK "Source ready: $($script:SrcSysName) ($($Config.datto.sim.rootPath))"; return }
@@ -800,14 +800,14 @@ function Invoke-DattoApi {
     $uri = ($Config.datto.endpointUrl.TrimEnd('/')) + $Path
     if ($Query) { $uri += '?' + (($Query.GetEnumerator() | ForEach-Object { "$($_.Key)=$([uri]::EscapeDataString([string]$_.Value))" }) -join '&') }
     $headers = Get-DattoAuthHeader -Config $Config
-    Lz7f1a28dc35
+    Lz5366308c24
     $r = Invoke-WithRetry -Config $Config -What "Datto GET $Path" -Action {
         $resp  = Invoke-WebRequest -UseBasicParsing -Method Get -Uri $uri -Headers $headers -TimeoutSec $script:HttpTimeoutSec
         $script:DattoLastHeaders = $resp.Headers
         $bytes = if ($resp.RawContentStream) { $resp.RawContentStream.ToArray() } else { [Text.Encoding]::UTF8.GetBytes([string]$resp.Content) }
         [Text.Encoding]::UTF8.GetString($bytes) | ConvertFrom-Json
     }
-    Lza30360eaa6 -Headers $script:DattoLastHeaders
+    Lz016907e11a -Headers $script:DattoLastHeaders
     return $r
 }
 function Get-DattoSpaces {
@@ -935,10 +935,17 @@ function Resolve-DattoSubPath {
             $isFolder = $false; try { $isFolder = [bool]$it.($f.itemFolder) } catch {}
             if ($isFolder -and ("$($it.($f.itemName))" -eq $seg)) { $hit = $it; break }
         }
-        if (-not $hit) { throw "SourceSubPath not found: no folder named '$seg' under '$($Space.Name)$(if($SubPath){"/$SubPath"})'. Check the path in mapping.csv. It is case-sensitive and must be the path as Datto shows it, with / between folders and no leading slash." }
+        if (-not $hit) { throw "SourceSubPath not found: no folder named '$seg' under '$($Space.Name)$(if($SubPath){"/$SubPath"})'. Check the path in mapping.csv. Spell it as Datto shows it (upper and lower case are treated the same), with / between folders and no leading slash." }
         $parent = $hit.($f.itemId)
     }
     return $parent
+}
+function Get-LocalReadPath {
+    param([string]$FullName, [bool]$OnWindows = ($env:OS -eq 'Windows_NT'))
+    if (-not $OnWindows -or -not $FullName -or $FullName.StartsWith('\\?\')) { return $FullName }
+    if ($FullName -notmatch '[ .](\\|$)') { return $FullName }
+    if ($FullName.StartsWith('\\')) { return ('\\?\UNC\' + $FullName.Substring(2)) }
+    return ('\\?\' + $FullName)
 }
 function Get-DattoItems {
     param($Config, $Space, [scriptblock]$OnItem)
@@ -968,11 +975,12 @@ function Get-DattoItems {
             $rel = $_.FullName.Substring($base.Length).TrimStart('\','/') -replace '\\','/'
             if ($subPath -and -not $contentsOnly) { $rel = "$subPath/$rel" }
             elseif ($rootSeed) { $rel = "$rootSeed/$rel" }
-            $h = ''; if ($_.Length -gt 0) { try { $h = (Get-FileHash -LiteralPath $_.FullName -Algorithm MD5).Hash.ToLower() } catch {} }
+            $srcId = Get-LocalReadPath -FullName $_.FullName
+            $h = ''; if ($_.Length -gt 0) { try { $h = (Get-FileHash -LiteralPath $srcId -Algorithm MD5).Hash.ToLower() } catch {} }
             if (([int]$_.Attributes -band 0x401000) -ne 0) { $phc.Value++ }
             $nfd = $false
             if ($script:PosixSrc) { $nfc = $rel.Normalize([System.Text.NormalizationForm]::FormC); if ($nfc -cne $rel) { $rel = $nfc; $nfd = $true } }
-            [pscustomobject]@{ Id = $_.FullName; RelativePath = $rel; Size = $_.Length; ModifiedUtc = $_.LastWriteTimeUtc.ToString('o'); CreatedUtc = $_.CreationTimeUtc.ToString('o'); Hash = $h; NfdRenamed = $nfd }
+            [pscustomobject]@{ Id = $srcId; RelativePath = $rel; Size = $_.Length; ModifiedUtc = $_.LastWriteTimeUtc.ToString('o'); CreatedUtc = $_.CreationTimeUtc.ToString('o'); Hash = $h; NfdRenamed = $nfd }
         }))
         if ("$($Config.source.provider)" -eq 'LocalFs' -and $phc.Value -gt 0) {
             Write-MigrationLog WARN "  $($phc.Value) file(s) under [$scopeLabel] are cloud placeholders (their content lives in another sync service, e.g. OneDrive Files On-Demand). Copying them will download each one from that service first, which can be slow, and fails if that service is unreachable. For a faster, safer run, right-click those folders and choose 'Always keep on this device' first."
@@ -1002,7 +1010,7 @@ function Get-DattoItems {
         Write-MigrationLog INFO "  SOURCE [$scopeLabel]: $('{0:N0}' -f $prog.Folders) folder(s) read, $('{0:N0}' -f $prog.Files) file(s) found so far.$w"
         if ($script:GuiMode) { Write-Host "##STATUS##|Source: $('{0:N0}' -f $prog.Folders) folders, $('{0:N0}' -f $prog.Files) files so far  (reading the $($script:SrcNounBare) list, nothing uploads yet)" }
     }
-    function Lzac11102f20 { param($ParentId, [string]$Prefix)
+    function Lz195a19a839 { param($ParentId, [string]$Prefix)
         $childPath = ($Config.datto.apiPaths.listChildren -replace '\{parentID\}', [uri]::EscapeDataString("$ParentId"))
         $q = @{}; if ($meta) { $q['metadata'] = $meta }
         $resp = Invoke-DattoApi -Config $Config -Path $childPath -Query $q
@@ -1017,7 +1025,7 @@ function Get-DattoItems {
             $rel = if ($Prefix) { "$Prefix/$name" } else { $name }
             $isFolder = $false; try { $isFolder = [bool]$it.($f.itemFolder) } catch {}
             if ($isFolder) {
-                Lzac11102f20 -ParentId $it.($f.itemId) -Prefix $rel
+                Lz195a19a839 -ParentId $it.($f.itemId) -Prefix $rel
             } else {
                 $size = 0; try { $size = [int64]$it.($f.itemSize) } catch {}
                 $md5 = ''; try { $md5 = "$($it.($f.itemHash))" } catch {}
@@ -1033,15 +1041,15 @@ function Get-DattoItems {
     }
     $startId = $Space.Id
     if ($subPath) { $startId = Resolve-DattoSubPath -Config $Config -Space $Space -SubPath $subPath }
-    Lzac11102f20 -ParentId $startId -Prefix $(if ($contentsOnly) { '' } else { $subPath })
+    Lz195a19a839 -ParentId $startId -Prefix $(if ($contentsOnly) { '' } else { $subPath })
     & $emitEnum -Force
     $script:SrcTotal = $prog.Files
     Write-MigrationLog OK "  SOURCE [$scopeLabel] FINISHED: $('{0:N0}' -f $prog.Files) file(s) across $('{0:N0}' -f $prog.Folders) folder(s)."
-    Lz7ca64b3896 -Config $Config -Space $Space -Suspects $suspects
+    Lzba2a2fdd91 -Config $Config -Space $Space -Suspects $suspects
     return $out
 }
 $script:EnumCacheMaxAgeSec = 86400
-function Lz230fdfa9ec {
+function Lzeb3c60c4ba {
     param($Config, $Space)
     if (-not $Config.run.stateRoot) { return $null }
     return (Join-Path $Config.run.stateRoot ("enum-" + (ConvertTo-Slug "$($Space.Name)") + ".json"))
@@ -1059,7 +1067,7 @@ function Get-EnumFilterKey {
 }
 function Save-EnumCache {
     param($Config, $Space, $Items)
-    $p = Lz230fdfa9ec -Config $Config -Space $Space
+    $p = Lzeb3c60c4ba -Config $Config -Space $Space
     if (-not $p) { return }
     try {
         if (-not (Test-Path $Config.run.stateRoot)) { New-Item -ItemType Directory -Path $Config.run.stateRoot -Force | Out-Null }
@@ -1087,7 +1095,7 @@ function Get-SpaceItemsCached {
     $sub = ''; try { if ((Test-ConfigProp $Space 'SubPath')) { $sub = "$($Space.SubPath)" } } catch {}
     $co = $false; try { if ((Test-ConfigProp $Space 'ContentsOnly')) { $co = [bool]$Space.ContentsOnly } } catch {}
     if ($script:UseEnumCache) {
-        $p = Lz230fdfa9ec -Config $Config -Space $Space
+        $p = Lzeb3c60c4ba -Config $Config -Space $Space
         $why = ''
         if (-not $p -or -not (Test-Path $p)) { $why = 'there is no saved file list for this project' }
         else {
@@ -1149,7 +1157,7 @@ function Get-SpaceItemsCached {
     $items = $__clean
     return $items
 }
-function Lz7ca64b3896 {
+function Lzba2a2fdd91 {
     param($Config, $Space, $Suspects)
     if (-not $Suspects -or $Suspects.Count -eq 0) { return }
     $verified = @{}
@@ -1165,7 +1173,7 @@ function Lz7ca64b3896 {
         Write-MigrationLog INFO "    [$($s.Path)] returned $($s.Count) items."
     }
 }
-function Lz06e563eb01 {
+function Lzf82bddfb32 {
     param($Config, $Item, [string]$OutFile)
     if ($Config.datto.provider -eq 'LocalSim') {
         if ($script:SpoolKey) { Save-SpoolFile -InFile $Item.Id -OutFile $OutFile -Key $script:SpoolKey | Out-Null }
@@ -1175,7 +1183,7 @@ function Lz06e563eb01 {
     $uri = ($Config.datto.endpointUrl.TrimEnd('/')) + ($Config.datto.apiPaths.downloadFile -replace '\{fileID\}', [uri]::EscapeDataString("$($Item.Id)"))
     $headers = Get-DattoAuthHeader -Config $Config
     Invoke-WithRetry -Config $Config -What "Datto download $($Item.RelativePath)" -Action {
-        Lz7f1a28dc35
+        Lz5366308c24
         if ($script:SpoolKey) { Invoke-SpoolDownload -Uri $uri -Headers $headers -OutFile $OutFile -Key $script:SpoolKey -TimeoutSec $script:TransferTimeoutSec | Out-Null }
         else { Invoke-WebRequest -UseBasicParsing -Method Get -Uri $uri -Headers $headers -OutFile $OutFile -TimeoutSec $script:TransferTimeoutSec }
     } | Out-Null
@@ -1218,7 +1226,7 @@ function Remove-PathTraversal {
     }
     return ($keep -join '/')
 }
-function Lzbab156f421 {
+function Lzd7c36f2fc4 {
     param($Config, $Space)
     if ($Config.datto.provider -eq 'LocalSim') { return @() }
     if (-not $Config.datto.apiPaths.listPermissions) { return @() }
@@ -1322,7 +1330,7 @@ function Set-GraphSessionState {
     $tenant = ''; if ($script:GraphSession) { $tenant = "$($script:GraphSession.Tenant)" }
     $script:GraphSession = [pscustomobject]@{ Config = $Config; Broker = $Broker; Exp = $Exp; RenewedUtc = [DateTimeOffset]::UtcNow; Tenant = $tenant; Renewals = 0 }
 }
-function Lzde16c6bd7e {
+function Lzabc9b93753 {
     param([switch]$Force)
     $s = $script:GraphSession
     if (-not $s) { return $false }
@@ -1353,7 +1361,7 @@ function Get-GraphErrorStatus {
 }
 function Invoke-LiscGraphRequest {
     $a = $args
-    [void](Lzde16c6bd7e)
+    [void](Lzabc9b93753)
     try { return (Invoke-MgGraphRequest @a) }
     catch {
         $status = Get-GraphErrorStatus $_
@@ -1361,7 +1369,7 @@ function Invoke-LiscGraphRequest {
         if ($status -ne 401 -or -not $s) { throw }
         if (([DateTimeOffset]::UtcNow - $s.RenewedUtc).TotalSeconds -lt 60) { throw }
         Write-MigrationLog WARN "Microsoft 365 rejected the sign-in (HTTP 401) before it was due to expire. Renewing it once and retrying."
-        [void](Lzde16c6bd7e -Force)
+        [void](Lzabc9b93753 -Force)
         return (Invoke-MgGraphRequest @a)
     }
 }
@@ -1463,9 +1471,9 @@ function Confirm-GraphFolderPath {
                 $st = $null; try { $st = $_.Exception.Response.StatusCode.value__ } catch {}
                 if ($st -eq 409) { break }
                 $isThr = (@(429, 503) -contains $st)
-                $isTr = ((@(408, 500, 502, 504) -contains $st) -or (Lz61aafe5a69 $_))
+                $isTr = ((@(408, 500, 502, 504) -contains $st) -or (Lzc4154144ff $_))
                 if (($isThr -and $a -lt $throttleMax) -or ($isTr -and $a -lt [int]$t.maxRetries)) {
-                    $delay = Lz55786922bf -Attempt $a -Throttle $t -RetryAfter (Get-RetryAfterSeconds $_)
+                    $delay = Lz0b5da378ff -Attempt $a -Throttle $t -RetryAfter (Get-RetryAfterSeconds $_)
                     $script:RetryEvents++
                     Write-MigrationLog WARN "  creating destination folder '$cur' was refused (HTTP $st); waiting $delay s and trying again (attempt $a). In plain terms: Microsoft 365 asked the tool to slow down. Normal on busy runs."
                     Start-Sleep -Seconds $delay; continue
@@ -1483,7 +1491,7 @@ function Confirm-GraphFolderPath {
         else { Write-MigrationLog WARN "  destination folder '$cur' could not be confirmed yet; it will be checked again for the next file rather than assumed to exist." }
     }
 }
-function Lzea32a4a3d6 {
+function Lz76bbeff30b {
     param([string]$Url)
     try {
         $u = [Uri]$Url
@@ -1540,7 +1548,7 @@ function Set-GraphFileDates {
         }
     }
 }
-function Lz14296a4d8e {
+function Lz32131e7c13 {
     if ($null -eq $script:DirectPutOk) {
         try { $script:DirectPutOk = [bool]((Get-Command Invoke-MgGraphRequest -ErrorAction Stop).Parameters.ContainsKey('InputFilePath')) }
         catch { $script:DirectPutOk = $false }
@@ -1575,7 +1583,7 @@ function Send-FileToDestination {
         if ($script:PreserveDates -and $Item.ModifiedUtc) {
             try { (Get-Item $dest).LastWriteTimeUtc = ([datetimeoffset]::Parse("$($Item.ModifiedUtc)", [System.Globalization.CultureInfo]::InvariantCulture)).UtcDateTime } catch {}
         }
-        return @{ Size = (Get-Item $dest).Length; Hash = (Lz067d132e5b $dest); Path = $relPath; Method = 'LocalSim'; Retries = 0 }
+        return @{ Size = (Get-Item $dest).Length; Hash = (Lzfafab39808 $dest); Path = $relPath; Method = 'LocalSim'; Retries = 0 }
     }
     if ($relPath -match '/') { Confirm-GraphFolderPath -Config $Config -DriveId $DriveId -FolderPath ($relPath -replace '/[^/]*$','') }
     $size = if ($script:SpoolKey) { Get-SpoolLength $LocalFile } else { (Get-Item $LocalFile).Length }
@@ -1592,7 +1600,7 @@ function Send-FileToDestination {
             Invoke-LiscGraphRequest -Method PUT -Uri $u -Body ([byte[]]::new(0)) -ContentType 'application/octet-stream' | Out-Null
         }
         Set-GraphFileDates -Config $Config -DriveId $DriveId -EncPath $encPath -Mtime $mtime -Ctime $ctime
-    } elseif ($size -le $script:SmallFilePutThreshold -and (Lz14296a4d8e) -and -not $script:SpoolKey) {
+    } elseif ($size -le $script:SmallFilePutThreshold -and (Lz32131e7c13) -and -not $script:SpoolKey) {
         $putUri = "https://graph.microsoft.com/v1.0/drives/$DriveId/root:/${encPath}:/content"
         try {
             $item = Invoke-WithRetry -Config $Config -What "put $relPath" -RetryNotFound -Action {
@@ -1681,7 +1689,7 @@ function Send-FileToDestination {
                 $sessIsThr = (@(429, 503) -contains $st)
                 if (($sessIsThr -and $attempt -lt $sessThrottleMax) -or ((@(401, 404, 408, 500, 502, 504) -contains $st) -and $attempt -lt $t.maxRetries)) {
                     $ra = Get-RetryAfterSeconds $_
-                    $delay = Lz55786922bf -Attempt $attempt -Throttle $t -RetryAfter $ra
+                    $delay = Lz0b5da378ff -Attempt $attempt -Throttle $t -RetryAfter $ra
                     $why = if ($t.honorRetryAfter -and $ra) { "Microsoft asked us to wait $ra s" } else { "Microsoft 365 asked the tool to slow down or the connection blipped" }
                     Write-MigrationLog WARN "  upload retry for $relPath (HTTP $st): new session, waiting $delay s (attempt $attempt/$($t.maxRetries)). In plain terms: $why, so it will wait $delay seconds and try again. Normal on busy runs."
                     $script:RetryEvents++; $localRetries++
@@ -1725,7 +1733,7 @@ $script:OfficeTypes = @(
     '.vsd','.vsdx','.vsdm','.vssx','.vstx','.vss','.vst',
     '.one','.thmx'
 )
-function Lz8258a329ba {
+function Lz993b0f8066 {
     param([string]$RelPath, [int64]$SourceSize, [int64]$DestSize)
     if ($SourceSize -eq 0) { return $true }
     if ($DestSize -le 0)   { return $false }
@@ -1733,7 +1741,7 @@ function Lz8258a329ba {
     $tol = [math]::Max(65536, [int64]($SourceSize * 0.01))
     return ([math]::Abs($DestSize - $SourceSize) -le $tol)
 }
-function Lzeab02d9cc2 {
+function Lzd1b8383937 {
     param($Repair, $Item, [string]$Status, [string]$Reason)
     if (-not $Repair -or $Repair.Count -eq 0) { return $Reason }
     if ($Status -ne 'Copied' -and $Status -ne 'ZeroByte') { return $Reason }
@@ -1741,7 +1749,7 @@ function Lzeab02d9cc2 {
     if (-not $Repair.ContainsKey($k)) { return $Reason }
     return "REPAIRED (an earlier run left a wrong-sized copy at the destination: $($Repair[$k])) | $Reason"
 }
-function Lz1b2978eba7 {
+function Lz5c4363af91 {
     param($Item, [string]$LocalFile, $DestInfo)
     $localSize = if ($script:SpoolKey) { Get-SpoolLength $LocalFile } else { (Get-Item $LocalFile).Length }
     if ($localSize -eq 0) { return @{ Ok = $true; Reason = 'zero-byte (accepted, flagged)'; Zero = $true } }
@@ -1758,7 +1766,7 @@ function Lz1b2978eba7 {
     }
     return @{ Ok = $false; Reason = "size mismatch (dest $dsz vs $localSize)"; Zero = $false }
 }
-function Lz86fa93fa7d {
+function Lzf3dbbc26dd {
     param($v)
     if ($null -eq $v) { return $null }
     if ($v -is [datetime]) { return [DateTime]::SpecifyKind($v, [DateTimeKind]::Utc) }
@@ -1786,7 +1794,7 @@ function ConvertTo-ConfigUtcBound {
     try { return ([datetimeoffset]::Parse($s, [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal)).UtcDateTime }
     catch { throw "$($script:StopTag)run.tuning.modifiedAfter/modifiedBefore must be a date (yyyy-MM-dd) or an ISO UTC timestamp. Got: '$v'." }
 }
-function Lz7aeb48a0fa {
+function Lzd67d064a80 {
     param($Config, $Project)
     Write-Host ""
     Write-Host ("Project: {0}" -f $Project.Name) -ForegroundColor Cyan
@@ -1818,7 +1826,7 @@ function Lz7aeb48a0fa {
                 $site = Read-Host "  SharePoint site URL (e.g. https://contoso.sharepoint.com/sites/Projects)"
                 if ([string]::IsNullOrWhiteSpace($site)) { Write-Host "  No site URL, skipping." -ForegroundColor DarkGray; return @{ Action='SKIP'; DestinationType='SharePoint'; DestinationUrl=''; TargetPrincipal=''; TargetLibrary=''; TargetSubFolder=''; Notes='No site URL provided.' } }
                 if ($validate) {
-                    $siteObj = Lzea32a4a3d6 -Url $site.Trim()
+                    $siteObj = Lz76bbeff30b -Url $site.Trim()
                     if (-not $siteObj) { Write-Host "  Site not found at that URL. Check it, e.g. https://tenant.sharepoint.com/sites/Name. Try again." -ForegroundColor Yellow; continue }
                     $libs = @((Invoke-LiscGraphRequest -Method GET -Uri "https://graph.microsoft.com/v1.0/sites/$($siteObj['id'])/drives")['value'] | ForEach-Object { $_['name'] })
                     Write-Host ("  OK, site found. Libraries: " + ($libs -join ', ')) -ForegroundColor Green
@@ -1844,7 +1852,7 @@ function Format-Destination {
     $lib = if (((Test-ConfigProp $Row 'TargetLibrary')) -and $Row.TargetLibrary) { $Row.TargetLibrary } else { 'Documents' }
     return "SharePoint [$($Row.DestinationUrl)] library [$lib] folder [$sub]"
 }
-function Lz79eb75e4d4 {
+function Lze8e70cb648 {
     param($Project, $Dest)
     return [pscustomobject]@{
         Space=$Project.Name; SpaceId=$Project.Id; SourceSubPath=''; SourceContentsOnly=''; Type='Project'; OwnerResolved='n/a'
@@ -1855,14 +1863,14 @@ function Lz79eb75e4d4 {
 }
 function Invoke-Discover {
     param($Config, [switch]$NonInteractive)
-    Lz5716c7978d -Config $Config -Stage 'api-discovery'
-    Lz53d5cf954b -Config $Config
+    Lz42ecc394a1 -Config $Config -Stage 'api-discovery'
+    Lzdb130f4b19 -Config $Config
     if (-not $NonInteractive) { Connect-Destination -Config $Config }
     $projects = @(Get-DattoSpaces -Config $Config)
     $rows = New-Object System.Collections.Generic.List[object]
     if ($NonInteractive) {
         foreach ($s in $projects) {
-            $rows.Add((Lz79eb75e4d4 -Project $s -Dest @{ Action='MIGRATE'; DestinationType='SharePoint'; DestinationUrl="$($Config.destination.teamSiteBaseUrl)/$((ConvertTo-Slug $s.Name))"; TargetPrincipal=''; TargetLibrary=''; TargetSubFolder=''; Notes='auto (non-interactive)' }))
+            $rows.Add((Lze8e70cb648 -Project $s -Dest @{ Action='MIGRATE'; DestinationType='SharePoint'; DestinationUrl="$($Config.destination.teamSiteBaseUrl)/$((ConvertTo-Slug $s.Name))"; TargetPrincipal=''; TargetLibrary=''; TargetSubFolder=''; Notes='auto (non-interactive)' }))
         }
     } else {
         $remaining = New-Object System.Collections.Generic.List[object]
@@ -1884,9 +1892,9 @@ function Invoke-Discover {
             $n = [int]$pick
             if ($n -lt 1 -or $n -gt $remaining.Count) { Write-Host "  Out of range." -ForegroundColor DarkGray; continue }
             $proj = $remaining[$n - 1]
-            $dest = Lz7aeb48a0fa -Config $Config -Project $proj
+            $dest = Lzd67d064a80 -Config $Config -Project $proj
             if ($dest.Action -eq 'MIGRATE') {
-                $newRow = Lz79eb75e4d4 -Project $proj -Dest $dest
+                $newRow = Lze8e70cb648 -Project $proj -Dest $dest
                 $rows.Add($newRow)
                 Write-Host ("  mapped: source [{0}] -> destination {1}" -f $proj.Name, (Format-Destination -Row $newRow)) -ForegroundColor Green
             } else {
@@ -1993,7 +2001,7 @@ function Write-PreFlightReport {
     $brand = 'Liscaragh Migrate'
     if (((Test-ConfigProp $Config.run 'report')) -and ((Test-ConfigProp $Config.run.report 'brand')) -and $Config.run.report.brand) { $brand = "$($Config.run.report.brand)" }
     $now = Get-Date
-    $tv = Lza152ab30c8; $verSub = if ($tv) { " &middot; v$tv" } else { '' }
+    $tv = Lz45647fd8e5; $verSub = if ($tv) { " &middot; v$tv" } else { '' }
     $html = @"
 <!DOCTYPE html><html><head><meta charset='utf-8'><title>$(_enc $brand) - Migration Readiness</title>
 <style>
@@ -2056,8 +2064,8 @@ $dupSection
 }
 function Invoke-PreFlight {
     param($Config)
-    Lz5716c7978d -Config $Config -Stage 'api-preflight'
-    Lz53d5cf954b -Config $Config
+    Lz42ecc394a1 -Config $Config -Stage 'api-preflight'
+    Lzdb130f4b19 -Config $Config
     Connect-Destination -Config $Config
     $map = @(Import-Csv (Join-Path $Config.run.reportRoot 'mapping.csv') | Where-Object Action -eq 'MIGRATE')
     $invalidRegex = '[' + [regex]::Escape('"*:<>?|') + ']'
@@ -2071,7 +2079,7 @@ function Invoke-PreFlight {
     $allBytes = [int64]0
     $t = $map.Count; $i = 0
     foreach ($row in $map) {
-        $i++; Lz5669edadca -Activity 'Pre-flight' -Status $row.Space -Current $i -Total $t | Out-Null
+        $i++; Lz305671cacc -Activity 'Pre-flight' -Status $row.Space -Current $i -Total $t | Out-Null
         $space = New-SpaceRef -Row $row -Config $Config
         try {
             $items = @(Get-DattoItems -Config $Config -Space $space)
@@ -2245,13 +2253,13 @@ function Write-AuditRunEnd {
     return $false
 }
 function Get-RunActivePath { param($Config) return (Join-Path $Config.run.reportRoot 'run-active.json') }
-function Lzeb4a5bffa4 {
+function Lzcb8d6b34a0 {
     param($Config,[string]$Mode,[datetime]$StartUtc,[string]$AuditFile,[int]$ExpectedFiles,[int]$SpacesPlanned,[int]$SpacesCompleted,[string]$ResultDir='')
     $o = [ordered]@{ Status='RUNNING'; Pid=$PID; Mode=$Mode; StartUtc=$StartUtc.ToUniversalTime().ToString('o')
         AuditFile=$AuditFile; ExpectedFiles=$ExpectedFiles; SpacesPlanned=$SpacesPlanned; SpacesCompleted=$SpacesCompleted; ResultDir=$ResultDir }
     try { [System.IO.File]::WriteAllText((Get-RunActivePath $Config), ($o | ConvertTo-Json -Depth 4), [System.Text.UTF8Encoding]::new($false)) } catch {}
 }
-function Lz92468b46d1 { param($Config) try { Remove-Item (Get-RunActivePath $Config) -Force -ErrorAction SilentlyContinue } catch {} }
+function Lzd3e1f270a0 { param($Config) try { Remove-Item (Get-RunActivePath $Config) -Force -ErrorAction SilentlyContinue } catch {} }
 function Get-EmailRegValue {
     param([string]$Name)
     try { return [string]((Get-ItemProperty -Path 'HKCU:\Software\DattoMigration' -Name $Name -ErrorAction Stop).$Name) } catch { return $null }
@@ -2278,7 +2286,7 @@ function Get-EmailNotifySettings {
         }
     } catch { return $null }
 }
-function Lza152ab30c8 {
+function Lz45647fd8e5 {
     if ($null -ne $script:ToolVersionCache) { return $script:ToolVersionCache }
     $v = ''
     try {
@@ -2313,7 +2321,7 @@ function Get-EmailCommonVars {
         if ($best.Count) { $tenant = "$($best[0]['name'])" }
     } catch {}
     if (-not $tenant) { try { $tenant = "$($Config.auth.tenantId)" } catch {} }
-    return @{ JobName = $job; Tenant = $tenant; Version = (Lza152ab30c8) }
+    return @{ JobName = $job; Tenant = $tenant; Version = (Lz45647fd8e5) }
 }
 function Get-EmailScopeVars {
     param($Config)
@@ -2596,7 +2604,7 @@ function Invoke-ProvenanceColumnSweep {
         $done = 0; $i = 0
         foreach ($r in $rows) {
             $i++
-            if (($i % 25) -eq 0) { Lz5669edadca -Activity 'Provenance columns' -Status "$i of $($rows.Count)" -Current $i -Total $rows.Count | Out-Null }
+            if (($i % 25) -eq 0) { Lz305671cacc -Activity 'Provenance columns' -Status "$i of $($rows.Count)" -Current $i -Total $rows.Count | Out-Null }
             $mrow = $map[$r.Space]
             if (-not $mrow) { continue }
             $driveId = $null
@@ -2742,7 +2750,7 @@ function Invoke-RunFinalize {
         AuditWriteFails=$auditWriteFails; AuditFile="$AuditFile"; LogFile="$script:LogFile"
         SpoolEncrypted=[bool]$script:SpoolEncrypt
         TrialMode=($null -ne $script:TrialCap); TrialLimit=$script:TrialFileLimit; TrialCapped=[bool]$script:TrialCapped
-        ToolVersion=(Lza152ab30c8)
+        ToolVersion=(Lz45647fd8e5)
     }
     $json = ($outcome | ConvertTo-Json -Depth 4)
     $sidecar = ($AuditFile -replace '\.csv$','') + '.outcome.json'
@@ -2791,10 +2799,10 @@ function Invoke-RunFinalize {
                 "Source: $($emVars['Source'])",
                 "Destination: $($emVars['Destination'])")
     } catch {}
-    Lz92468b46d1 -Config $Config
+    Lzd3e1f270a0 -Config $Config
     return $outcome
 }
-function Lz664e81c806 {
+function Lze20ee258ef {
     param($Config,[string]$Mode,[datetime]$RunStart,[int]$ExpectedFiles,[int]$SpacesPlanned,
           [int]$SpacesCompleted,$RunError,[bool]$WillWrite,[string]$ResultDir='')
     if (-not $WillWrite) {
@@ -2811,7 +2819,7 @@ function Lz664e81c806 {
 }
 function Invoke-FinalizeAction {
     param($Config,[string]$Status='Incomplete',[string]$AuditPath='')
-    Lz5716c7978d -Config $Config -Stage 'api-finalize'
+    Lz42ecc394a1 -Config $Config -Stage 'api-finalize'
     $act = $null
     $ap = Get-RunActivePath $Config
     if (Test-Path $ap) { try { $act = Get-Content $ap -Raw | ConvertFrom-Json } catch {} }
@@ -2821,7 +2829,7 @@ function Invoke-FinalizeAction {
         if (-not "$($act.AuditFile)" -and "$($act.ResultDir)" -and (Test-Path "$($act.ResultDir)")) {
             $childRows = New-Object System.Collections.Generic.List[object]
             foreach ($a in @(Get-ChildItem "$($act.ResultDir)" -Filter 'audit-*.csv' -ErrorAction SilentlyContinue)) { foreach ($r in @(Import-Csv $a.FullName)) { $childRows.Add($r) } }
-            Lz83ae6f8d8b -Config $Config -ResultDir "$($act.ResultDir)" -Mode $mModeF
+            Merge-ParallelSideFiles -Config $Config -ResultDir "$($act.ResultDir)" -Mode $mModeF
             $AuditPath = Join-Path $Config.run.reportRoot ("audit-$mModeF-" + (Get-Date -Format 'yyyyMMdd-HHmmss') + '-finalized.csv')
             if ($childRows.Count) { $childRows | Export-Csv -Path $AuditPath -NoTypeInformation -Encoding UTF8 } else { try { '' | Set-Content -Path $AuditPath -Encoding UTF8 } catch {} }
             Write-MigrationLog INFO "Record outcome: merged $($childRows.Count) file action(s) from the stopped parallel run's $($script:SrcItems) into $AuditPath."
@@ -2840,10 +2848,10 @@ function Invoke-FinalizeAction {
         }
     }
     if (-not $AuditPath -or -not (Test-Path $AuditPath)) {
-        Write-MigrationLog WARN "Record outcome: no audit CSV found, so there is nothing to record."; Lz92468b46d1 -Config $Config; return
+        Write-MigrationLog WARN "Record outcome: no audit CSV found, so there is nothing to record."; Lzd3e1f270a0 -Config $Config; return
     }
     $sidecar = ($AuditPath -replace '\.csv$','') + '.outcome.json'
-    if (Test-Path $sidecar) { Write-MigrationLog INFO "Record outcome: the run already has an outcome; leaving it as it is."; Lz92468b46d1 -Config $Config; return }
+    if (Test-Path $sidecar) { Write-MigrationLog INFO "Record outcome: the run already has an outcome; leaving it as it is."; Lzd3e1f270a0 -Config $Config; return }
     $su = if ($act -and $act.StartUtc) { try { [datetime]::Parse($act.StartUtc,$null,[System.Globalization.DateTimeStyles]::RoundtripKind) } catch { (Get-Date) } } else { (Get-Date) }
     $mode = if ($act -and $act.Mode) { "$($act.Mode)" } else { 'FirstPass' }
     $exp  = if ($act) { [int]$act.ExpectedFiles } else { 0 }
@@ -2854,7 +2862,7 @@ function Invoke-FinalizeAction {
     Invoke-RunFinalize -Config $Config -AuditFile $AuditPath -Mode $mode -RunStart $su `
         -ExpectedFiles $exp -SpacesPlanned $sp -SpacesCompleted $sc -ForcedStatus $fs -ForcedReason $fr | Out-Null
 }
-function Lz902750e67c {
+function Lz5790648f08 {
     param([string]$Path)
     try {
         $root = [System.IO.Path]::GetPathRoot($Path)
@@ -2862,7 +2870,7 @@ function Lz902750e67c {
         return ([System.IO.DriveInfo]::new($root)).AvailableFreeSpace
     } catch { return -1 }
 }
-function Lz3718cd9e55 {
+function Lza4a11de0a0 {
     param($Config)
     try {
         $thumb = "$($Config.auth.certThumbprint)".Trim()
@@ -2905,7 +2913,7 @@ function Test-MappingSpaceIds {
         }
     }
 }
-function Lz3bbb0d5feb {
+function Lz122d18e23e {
     param($Config)
     if ($script:LegacyStateNoticeDone) { return }
     $script:LegacyStateNoticeDone = $true
@@ -2927,16 +2935,16 @@ function Invoke-PreRunChecks {
     try {
         $tmpRoot = $Config.run.tempWorkingFolder
         if ($tmpRoot -and (Test-Path $tmpRoot)) {
-            $freeB = Lz902750e67c -Path $tmpRoot
+            $freeB = Lz5790648f08 -Path $tmpRoot
             if ($freeB -ge 0) {
                 Write-MigrationLog INFO "  temp drive free space: $(Format-Bytes $freeB) (files are staged here then deleted immediately after upload, so only a handful sit on disk at once)."
                 if ($freeB -lt 2GB) { Write-MigrationLog WARN "  the temp drive has under 2 GB free. Everyday files are fine (only a handful stage at a time), but any single file larger than the free space is skipped and reported. Free space, or point run.tempWorkingFolder at a bigger drive." }
             }
         }
     } catch {}
-    Lz3718cd9e55 -Config $Config
+    Lza4a11de0a0 -Config $Config
 }
-function Lzc43fdbcee3 {
+function Lz4e3d8ecae2 {
     param($Config, $Rows)
     if ($Config.destination.provider -eq 'LocalSim') { return }
     $seen = @{}
@@ -2973,7 +2981,7 @@ function Invoke-Transfer {
         $Mode = 'Delta'
         Write-MigrationLog INFO "Resume now runs as a Sync: it compares $($script:SrcNoun) against the destination itself, file by file, instead of trusting a local record of the last run. Same intent, and it cannot be fooled by a stale or damaged record."
     }
-    Lz5716c7978d -Config $Config -Stage "api-transfer-$Mode" -Friendly $(
+    Lz42ecc394a1 -Config $Config -Stage "api-transfer-$Mode" -Friendly $(
         if (-not $Execute) { 'Preview (nothing copied)' }
         elseif ($Mode -eq 'Delta') { 'Sync new and changed' } else { 'Full migration' })
     $script:FailedOnlySet = $null
@@ -2982,7 +2990,7 @@ function Invoke-Transfer {
         $script:UseEnumCache = $false
         $script:FailedOnlySet = Build-FailedOnlySet -Config $Config -AuditPath $FailedFromAudit
     }
-    Lz3bbb0d5feb -Config $Config
+    Lz122d18e23e -Config $Config
     Test-MappingSpaceIds -Config $Config
     if ($Execute -and $Config.destination.provider -ne 'LocalSim' -and $null -eq $script:TrialCap) {
         $lzOk = $false; $lzTen = ''
@@ -3049,7 +3057,7 @@ function Invoke-Transfer {
         $MaxParallelSpaces = 1
     }
     if ($MaxParallelSpaces -gt 1 -and $runnable.Count -gt 1) {
-        Lzfb336c168f -Config $Config -Rows $runnable -Mode $Mode -DeltaMode $DeltaMode -SpoolAhead $SpoolAhead -MaxParallelSpaces $MaxParallelSpaces -Execute:$Execute
+        Lz0029aca01b -Config $Config -Rows $runnable -Mode $Mode -DeltaMode $DeltaMode -SpoolAhead $SpoolAhead -MaxParallelSpaces $MaxParallelSpaces -Execute:$Execute
         return
     }
     Write-MigrationLog INFO "This run: $($map.Count) $($script:SrcItem)(s). (Read-ahead: $SpoolAhead file(s).)"
@@ -3060,21 +3068,21 @@ function Invoke-Transfer {
         $script:SpoolKey = $null
         Write-MigrationLog INFO "Spool encryption is OFF (run.encryptSpool = false): files staged on this computer are readable while a run is in flight."
     }
-    Lz53d5cf954b -Config $Config
+    Lzdb130f4b19 -Config $Config
     Connect-Destination -Config $Config
     $expectedTotal   = 0
     $script:ListedTotal = 0
     $spacesPlanned   = @($map | Where-Object { $blockedSpaces -notcontains $_.Space }).Count
     $spacesCompleted = 0
     $transferError   = $null
-    if ($willWrite -and -not $ResultDir) { Lzeb4a5bffa4 -Config $Config -Mode $Mode -StartUtc $runStart -AuditFile $script:AuditFile -ExpectedFiles 0 -SpacesPlanned $spacesPlanned -SpacesCompleted 0 }
+    if ($willWrite -and -not $ResultDir) { Lzcb8d6b34a0 -Config $Config -Mode $Mode -StartUtc $runStart -AuditFile $script:AuditFile -ExpectedFiles 0 -SpacesPlanned $spacesPlanned -SpacesCompleted 0 }
     $summary = New-Object System.Collections.Generic.List[object]
     $sTotal = $map.Count; $sIdx = 0
     try {
-    if ($willWrite) { Lzc43fdbcee3 -Config $Config -Rows $map; Invoke-PreRunChecks -Config $Config }
+    if ($willWrite) { Lz4e3d8ecae2 -Config $Config -Rows $map; Invoke-PreRunChecks -Config $Config }
     foreach ($row in $map) {
         $sIdx++
-        Lz5669edadca -Activity "Transfer ($Mode)" -Status $row.Space -Current $sIdx -Total $sTotal -Id 1 | Out-Null
+        Lz305671cacc -Activity "Transfer ($Mode)" -Status $row.Space -Current $sIdx -Total $sTotal -Id 1 | Out-Null
         if ($blockedSpaces -contains $row.Space) { Write-MigrationLog ERROR "SKIPPED '$($row.Space)': the readiness check found too little storage at this destination. Increase the quota or free up space, then run again."; continue }
         Write-MigrationLog INFO "[$(if (-not $willWrite) { 'Preview' } elseif ($Mode -eq 'Delta') { 'Sync' } else { 'Upload' })] source [$($row.Space)] -> destination $(Format-Destination -Row $row)"
         $space = New-SpaceRef -Row $row -Config $Config
@@ -3127,7 +3135,7 @@ function Invoke-Transfer {
                 $rp = $_.RelativePath -replace '\\','/'; if ($san) { $rp = ConvertTo-SafeRelPath $rp }
                 if (-not $inv.Paths.Contains($rp)) { return $true }
                 $ds = $null; if ($inv.Sizes -and $inv.Sizes.ContainsKey($rp)) { $ds = [int64]$inv.Sizes[$rp] }
-                if ($null -ne $ds -and -not (Lz8258a329ba -RelPath $rp -SourceSize ([int64]$_.Size) -DestSize $ds)) {
+                if ($null -ne $ds -and -not (Lz993b0f8066 -RelPath $rp -SourceSize ([int64]$_.Size) -DestSize $ds)) {
                     $repair["$($_.Id)"] = "destination copy was $ds byte(s), source is $($_.Size) byte(s)"
                     return $true
                 }
@@ -3173,7 +3181,7 @@ function Invoke-Transfer {
         $fTotal = $toDo.Count; $fIdx = 0
         $spaceBytesTotal = Get-SafeSum -Items $toDo -Property Size
         $expectedTotal += $fTotal
-        if ($willWrite) { Lzec4f69cda8 -Done 0 -Total $fTotal -BytesDone 0 -BytesTotal $spaceBytesTotal -Space $row.Space }
+        if ($willWrite) { Lzf9ecd5acef -Done 0 -Total $fTotal -BytesDone 0 -BytesTotal $spaceBytesTotal -Space $row.Space }
         if ($script:GuiMode) { Write-Host "##SCOPE##|$fTotal|$($items.Count)|$skipped" }
         if ($willWrite -and $Mode -ne 'FirstPass') {
             foreach ($sk in @($items | Where-Object { -not $toDoPreCapIds.Contains("$($_.Id)") })) {
@@ -3565,9 +3573,9 @@ function Invoke-Transfer {
                     $script:SweepList.Add(@{ Drive = $driveId; Enc = (([uri]::EscapeDataString($res.DestPath) -replace '%2F','/')); Rel = $res.DestPath; Mtime = "$($it.ModifiedUtc)"; Ctime = $swCt })
                 }
                 $rDl = 0.0; try { $rDl = [double]$res.DlMs } catch {}
-                $rsn = Lzeab02d9cc2 -Repair $repair -Item $it -Status $res.Status -Reason $res.Reason
+                $rsn = Lzd1b8383937 -Repair $repair -Item $it -Status $res.Status -Reason $res.Reason
                 Write-AuditRecord -Space $row.Space -Item $it -Status $res.Status -Reason $rsn -DestSize $res.DestSize -DestPath $res.DestPath -DestHash $res.DestHash -Method $res.Method -Retries $res.Retries -DurationMs $res.Ms -DownloadMs $rDl -ErrorMsg $res.Error
-                Lzec4f69cda8 -Done $script:fIdxRef.Value -Total $fTotal -BytesDone $script:bytesRef.Value -BytesTotal $spaceBytesTotal -Space $row.Space `
+                Lzf9ecd5acef -Done $script:fIdxRef.Value -Total $fTotal -BytesDone $script:bytesRef.Value -BytesTotal $spaceBytesTotal -Space $row.Space `
                     -SmallDone $script:EtaSmallDone -SmallTotal $script:EtaSmallTotal -LargeBytesDone $script:EtaLargeBytesDone -LargeBytesTotal $script:EtaLargeBytesTotal -Final ([int][bool]$enumFlag.Done)
             }
             $script:fIdxRef=[ref]$fIdx; $script:copiedRef=[ref]$copied; $script:bytesRef=[ref]$bytes; $script:zeroRef=[ref]$zero; $script:verifyFailRef=[ref]$verifyFail; $script:failedRef=[ref]$failed
@@ -3607,7 +3615,7 @@ function Invoke-Transfer {
             $spoolClosed=$false
             while (@($workers | Where-Object { -not $_.Handle.IsCompleted }).Count -gt 0 -or $resQ.Count -gt 0) {
                 $res=$null
-                while ($resQ.TryDequeue([ref]$res)) { & $process $res; Lz5669edadca -Activity "Files: $($row.Space)" -Status $res.DestPath -Current $script:fIdxRef.Value -Total $fTotal -Id 2 | Out-Null }
+                while ($resQ.TryDequeue([ref]$res)) { & $process $res; Lz305671cacc -Activity "Files: $($row.Space)" -Status $res.DestPath -Current $script:fIdxRef.Value -Total $fTotal -Id 2 | Out-Null }
                 if (-not $spoolClosed -and (@($downloaders | Where-Object { -not $_.Handle.IsCompleted }).Count -eq 0)) { $spool.CompleteAdding(); $spoolClosed=$true }
                 if ($Config.destination.provider -ne 'LocalSim') { Update-WorkerToken -Holder $tokenHolder -Config $Config }
                 $nowT=[DateTime]::UtcNow.Ticks
@@ -3621,7 +3629,7 @@ function Invoke-Transfer {
                 } finally { [System.Threading.Monitor]::Exit($thr.SyncRoot) }
                 $isPaused = $pausedSecs -gt 0
                 if ($curMax -ne $script:LastThrMax -or $isPaused -ne $script:LastThrPaused) {
-                    Lz921ef6fd54 -Max $curMax -HardMax $thr.HardMax -PausedSeconds $pausedSecs -Events $curEvents -Code $curCode
+                    Lzac90d7822d -Max $curMax -HardMax $thr.HardMax -PausedSeconds $pausedSecs -Events $curEvents -Code $curCode
                     $codeTxt = if ($curCode) { " (HTTP ${curCode}: too many requests too fast)" } else { "" }
                     if ($curMax -lt $thr.HardMax -or $isPaused) {
                         $msg = if ($isPaused) { "Throttling${codeTxt}: Microsoft asked us to pause about $pausedSecs s. Easing off to $curMax of $($thr.HardMax) uploader(s)." } else { "Throttling${codeTxt}: easing off to $curMax of $($thr.HardMax) uploader(s) to stay within Microsoft 365 limits." }
@@ -3653,7 +3661,7 @@ function Invoke-Transfer {
                 } catch {}
                 Start-Sleep -Milliseconds 100
             }
-            if ($script:LastThrMax -ne -1 -and $script:LastThrMax -lt $thr.HardMax) { Lz921ef6fd54 -Max $thr.HardMax -HardMax $thr.HardMax -PausedSeconds 0 -Events $thr.Events }
+            if ($script:LastThrMax -ne -1 -and $script:LastThrMax -lt $thr.HardMax) { Lzac90d7822d -Max $thr.HardMax -HardMax $thr.HardMax -PausedSeconds 0 -Events $thr.Events }
             if (-not $spoolClosed) { $spool.CompleteAdding() }
             $res=$null; while ($resQ.TryDequeue([ref]$res)) { & $process $res }
             $fIdx=$script:fIdxRef.Value; $copied=$script:copiedRef.Value; $bytes=$script:bytesRef.Value; $zero=$script:zeroRef.Value; $verifyFail=$script:verifyFailRef.Value; $failed=$script:failedRef.Value
@@ -3669,28 +3677,28 @@ function Invoke-Transfer {
             foreach ($it in $toDo) {
                 $fIdx++
                 if ([int64]$it.Size -ge $script:LargeFileBytes) { $etaLargeDone += [int64]$it.Size } else { $etaSmallDone++ }
-                Lz5669edadca -Activity "Files: $($row.Space)" -Status $it.RelativePath -Current $fIdx -Total $fTotal -Id 2 | Out-Null
+                Lz305671cacc -Activity "Files: $($row.Space)" -Status $it.RelativePath -Current $fIdx -Total $fTotal -Id 2 | Out-Null
                 $tempFile = Join-Path $spaceTemp ([guid]::NewGuid().ToString('N') + $(if ($script:SpoolKey) { '' } else { [System.IO.Path]::GetExtension($it.RelativePath) }))
                 $dlSw = [System.Diagnostics.Stopwatch]::StartNew(); $upSw = [System.Diagnostics.Stopwatch]::new()
                 try {
-                    Lz06e563eb01 -Config $Config -Item $it -OutFile $tempFile | Out-Null
+                    Lzf82bddfb32 -Config $Config -Item $it -OutFile $tempFile | Out-Null
                     $dlSw.Stop(); $upSw.Start()
                     $destInfo = Send-FileToDestination -Config $Config -DriveId $driveId -TargetFolder $effSub -Item $it -LocalFile $tempFile -Space $row.Space
-                    $v = Lz1b2978eba7 -Item $it -LocalFile $tempFile -DestInfo $destInfo
+                    $v = Lz5c4363af91 -Item $it -LocalFile $tempFile -DestInfo $destInfo
                     $upSw.Stop()
                     if ($v.Ok) {
                         if ($v.Zero) { Write-MigrationLog WARN "  empty file (0 bytes), uploaded as-is: $($it.RelativePath)"; $zero++ }
                         $copied++; $bytes += $it.Size
                         if ($script:VerboseFiles) { Write-MigrationLog INFO "  + [$($it.RelativePath)] $($v.Reason)" }
                         $stat = if($v.Zero){'ZeroByte'}else{'Copied'}
-                        Write-AuditRecord -Space $row.Space -Item $it -Status $stat -Reason (Lzeab02d9cc2 -Repair $repair -Item $it -Status $stat -Reason $v.Reason) -DestSize $destInfo.Size -DestPath $destInfo.Path -DestHash $destInfo.Hash -Method $destInfo.Method -Retries $destInfo.Retries -DurationMs $upSw.Elapsed.TotalMilliseconds -DownloadMs $dlSw.Elapsed.TotalMilliseconds
+                        Write-AuditRecord -Space $row.Space -Item $it -Status $stat -Reason (Lzd1b8383937 -Repair $repair -Item $it -Status $stat -Reason $v.Reason) -DestSize $destInfo.Size -DestPath $destInfo.Path -DestHash $destInfo.Hash -Method $destInfo.Method -Retries $destInfo.Retries -DurationMs $upSw.Elapsed.TotalMilliseconds -DownloadMs $dlSw.Elapsed.TotalMilliseconds
                     } else {
                         $verifyFail++; Write-MigrationLog ERROR "  VERIFY FAILED $($it.RelativePath): $($v.Reason). In plain terms: the uploaded copy did not match the original, so it was not marked done. It will be retried on the next Sync."
                         Write-AuditRecord -Space $row.Space -Item $it -Status 'VerifyFail' -Reason $v.Reason -DestSize $destInfo.Size -DestPath $destInfo.Path -DestHash $destInfo.Hash -Method $destInfo.Method -Retries $destInfo.Retries -DurationMs $upSw.Elapsed.TotalMilliseconds -DownloadMs $dlSw.Elapsed.TotalMilliseconds
                     }
                 } catch { if ($dlSw.IsRunning){$dlSw.Stop()}; if($upSw.IsRunning){$upSw.Stop()}; $failed++; Write-MigrationLog ERROR "  FAILED $($it.RelativePath): $($_.Exception.Message). In plain terms: this file could not be copied. It will be retried on the next Sync."; Write-AuditRecord -Space $row.Space -Item $it -Status 'Error' -DurationMs $upSw.Elapsed.TotalMilliseconds -DownloadMs $dlSw.Elapsed.TotalMilliseconds -ErrorMsg $_.Exception.Message }
                 finally { if (Test-Path $tempFile) { Remove-Item $tempFile -Force -ErrorAction SilentlyContinue } }
-                Lzec4f69cda8 -Done $fIdx -Total $fTotal -BytesDone $bytes -BytesTotal $spaceBytesTotal -Space $row.Space -SmallDone $etaSmallDone -SmallTotal $etaSmallTotal -LargeBytesDone $etaLargeDone -LargeBytesTotal $etaLargeTotal -Final 1
+                Lzf9ecd5acef -Done $fIdx -Total $fTotal -BytesDone $bytes -BytesTotal $spaceBytesTotal -Space $row.Space -SmallDone $etaSmallDone -SmallTotal $etaSmallTotal -LargeBytesDone $etaLargeDone -LargeBytesTotal $etaLargeTotal -Final 1
             }
         }
         else {
@@ -3790,27 +3798,27 @@ function Invoke-Transfer {
                 $fIdx++
                 $it = $ready.Item
                 if ([int64]$it.Size -ge $script:LargeFileBytes) { $etaLargeDone += [int64]$it.Size } else { $etaSmallDone++ }
-                Lz5669edadca -Activity "Files: $($row.Space)" -Status $it.RelativePath -Current $fIdx -Total $fTotal -Id 2 | Out-Null
+                Lz305671cacc -Activity "Files: $($row.Space)" -Status $it.RelativePath -Current $fIdx -Total $fTotal -Id 2 | Out-Null
                 $dlMs = 0.0; try { $dlMs = [double]$ready.DlMs } catch {}
                 if (-not $ready.Ok) { $failed++; Write-MigrationLog ERROR "  DOWNLOAD FAILED $($it.RelativePath): $($ready.Error). In plain terms: the file could not be downloaded from $($script:SrcNoun). It will be retried on the next Sync."; Write-AuditRecord -Space $row.Space -Item $it -Status 'DownloadError' -DownloadMs $dlMs -ErrorMsg $ready.Error; if ($ready.TempFile) { $delQ.Enqueue($ready.TempFile) }; continue }
                 $sw = [System.Diagnostics.Stopwatch]::StartNew()
                 try {
                     $destInfo = Send-FileToDestination -Config $Config -DriveId $driveId -TargetFolder $effSub -Item $it -LocalFile $ready.TempFile -Space $row.Space
-                    $v = Lz1b2978eba7 -Item $it -LocalFile $ready.TempFile -DestInfo $destInfo
+                    $v = Lz5c4363af91 -Item $it -LocalFile $ready.TempFile -DestInfo $destInfo
                     $sw.Stop()
                     if ($v.Ok) {
                         if ($v.Zero) { Write-MigrationLog WARN "  empty file (0 bytes), uploaded as-is: $($it.RelativePath)"; $zero++ }
                         $copied++; $bytes += $it.Size
                         if ($script:VerboseFiles) { Write-MigrationLog INFO "  + [$($it.RelativePath)] $($v.Reason)" }
                         $stat = if($v.Zero){'ZeroByte'}else{'Copied'}
-                        Write-AuditRecord -Space $row.Space -Item $it -Status $stat -Reason (Lzeab02d9cc2 -Repair $repair -Item $it -Status $stat -Reason $v.Reason) -DestSize $destInfo.Size -DestPath $destInfo.Path -DestHash $destInfo.Hash -Method $destInfo.Method -Retries $destInfo.Retries -DurationMs $sw.Elapsed.TotalMilliseconds -DownloadMs $dlMs
+                        Write-AuditRecord -Space $row.Space -Item $it -Status $stat -Reason (Lzd1b8383937 -Repair $repair -Item $it -Status $stat -Reason $v.Reason) -DestSize $destInfo.Size -DestPath $destInfo.Path -DestHash $destInfo.Hash -Method $destInfo.Method -Retries $destInfo.Retries -DurationMs $sw.Elapsed.TotalMilliseconds -DownloadMs $dlMs
                     } else {
                         $verifyFail++; Write-MigrationLog ERROR "  VERIFY FAILED $($it.RelativePath): $($v.Reason). In plain terms: the uploaded copy did not match the original, so it was not marked done. It will be retried on the next Sync."
                         Write-AuditRecord -Space $row.Space -Item $it -Status 'VerifyFail' -Reason $v.Reason -DestSize $destInfo.Size -DestPath $destInfo.Path -DestHash $destInfo.Hash -Method $destInfo.Method -Retries $destInfo.Retries -DurationMs $sw.Elapsed.TotalMilliseconds -DownloadMs $dlMs
                     }
                 } catch { $sw.Stop(); $failed++; Write-MigrationLog ERROR "  UPLOAD FAILED $($it.RelativePath): $($_.Exception.Message). In plain terms: the file could not be uploaded to Microsoft 365. It will be retried on the next Sync."; Write-AuditRecord -Space $row.Space -Item $it -Status 'Error' -DurationMs $sw.Elapsed.TotalMilliseconds -DownloadMs $dlMs -ErrorMsg $_.Exception.Message }
                 finally { $delQ.Enqueue($ready.TempFile) }
-                Lzec4f69cda8 -Done $fIdx -Total $fTotal -BytesDone $bytes -BytesTotal $spaceBytesTotal -Space $row.Space -SmallDone $etaSmallDone -SmallTotal $etaSmallTotal -LargeBytesDone $etaLargeDone -LargeBytesTotal $etaLargeTotal -Final 1
+                Lzf9ecd5acef -Done $fIdx -Total $fTotal -BytesDone $bytes -BytesTotal $spaceBytesTotal -Space $row.Space -SmallDone $etaSmallDone -SmallTotal $etaSmallTotal -LargeBytesDone $etaLargeDone -LargeBytesTotal $etaLargeTotal -Final 1
             }
             $prod.EndInvoke($prodH); $prod.Dispose()
             $flags.Done = $true
@@ -3831,7 +3839,7 @@ function Invoke-Transfer {
         }
         $summary.Add([pscustomobject]@{ Space=$row.Space; Copied=$copied; Skipped=$skipped; Failed=$failed; VerifyFail=$verifyFail; ZeroByte=$zero; GB=$gb; Bytes=$bytes })
         $spacesCompleted++
-        if ($willWrite -and -not $ResultDir) { Lzeb4a5bffa4 -Config $Config -Mode $Mode -StartUtc $runStart -AuditFile $script:AuditFile -ExpectedFiles $expectedTotal -SpacesPlanned $spacesPlanned -SpacesCompleted $spacesCompleted }
+        if ($willWrite -and -not $ResultDir) { Lzcb8d6b34a0 -Config $Config -Mode $Mode -StartUtc $runStart -AuditFile $script:AuditFile -ExpectedFiles $expectedTotal -SpacesPlanned $spacesPlanned -SpacesCompleted $spacesCompleted }
     }
     try { Write-Progress -Id 1 -Activity "Transfer ($Mode)" -Completed } catch {}
     if ($ResultDir) {
@@ -3850,9 +3858,9 @@ function Invoke-Transfer {
                 try {
                     $di = Invoke-LiscGraphRequest -Method GET -Uri "https://graph.microsoft.com/v1.0/drives/$($sw.Drive)/root:/$($sw.Enc)`?`$select=fileSystemInfo"
                     $destLm = $null
-                    try { $destLm = Lz86fa93fa7d $di['fileSystemInfo']['lastModifiedDateTime'] } catch { try { $destLm = Lz86fa93fa7d $di.fileSystemInfo.lastModifiedDateTime } catch {} }
+                    try { $destLm = Lzf3dbbc26dd $di['fileSystemInfo']['lastModifiedDateTime'] } catch { try { $destLm = Lzf3dbbc26dd $di.fileSystemInfo.lastModifiedDateTime } catch {} }
                     $destCr = $null
-                    try { $destCr = Lz86fa93fa7d $di['fileSystemInfo']['createdDateTime'] } catch { try { $destCr = Lz86fa93fa7d $di.fileSystemInfo.createdDateTime } catch {} }
+                    try { $destCr = Lzf3dbbc26dd $di['fileSystemInfo']['createdDateTime'] } catch { try { $destCr = Lzf3dbbc26dd $di.fileSystemInfo.createdDateTime } catch {} }
                     $srcLm = ConvertTo-UtcDate $sw.Mtime
                     $swCt = ''; try { if ($sw.ContainsKey('Ctime')) { $swCt = "$($sw.Ctime)" } } catch {}
                     $srcCr = if ($swCt) { ConvertTo-UtcDate $swCt } else { $srcLm }
@@ -3936,25 +3944,43 @@ function Invoke-Transfer {
         }
     }
     finally {
-        Lz664e81c806 -Config $Config -Mode $Mode -RunStart $runStart -ExpectedFiles $expectedTotal `
+        Lze20ee258ef -Config $Config -Mode $Mode -RunStart $runStart -ExpectedFiles $expectedTotal `
             -SpacesPlanned $spacesPlanned -SpacesCompleted $spacesCompleted -RunError $transferError `
             -WillWrite:$willWrite -ResultDir $ResultDir
     }
 }
-function Lz83ae6f8d8b {
-    param($Config, [string]$ResultDir, [string]$Mode, [string]$Stamp = '')
+function Merge-ParallelSideFiles {
+    param($Config, [string]$ResultDir, [string]$Mode, [string]$Stamp = '', $Rows = $null, $AuditRows = $null)
     if (-not $ResultDir -or -not (Test-Path $ResultDir)) { return }
     if (-not $Stamp) { $Stamp = Get-Date -Format 'yyyyMMdd-HHmmss' }
+    $cross = New-Object System.Collections.Generic.List[object]
+    if ($Rows -and $AuditRows) {
+        try {
+            $destIdOf = @{}
+            foreach ($r in $Rows) { if (-not $destIdOf.ContainsKey("$($r.Space)")) { $destIdOf["$($r.Space)"] = Get-RowDestId $r } }
+            $firstAt = @{}
+            foreach ($a in $AuditRows) {
+                if (-not "$($a.DestPath)" -or ("$($a.Status)" -ne 'Copied' -and "$($a.Status)" -ne 'ZeroByte')) { continue }
+                $k = "$($destIdOf["$($a.Space)"])|" + "$($a.DestPath)".ToLowerInvariant()
+                if (-not $firstAt.ContainsKey($k)) { $firstAt[$k] = $a; continue }
+                $first = $firstAt[$k]
+                if ("$($a.Space)" -eq "$($first.Space)") { continue }
+                $cross.Add([pscustomobject][ordered]@{ Space = "$($a.Space)"; Final = "$($a.DestPath)"; FirstSource = "$($first.SourcePath) (from $($first.Space))"; SecondSource = "$($a.SourcePath) (from $($a.Space))" })
+                Write-MigrationLog WARN "  NAME COLLISION in [$($a.Space)]: '$($a.SourcePath) (from $($a.Space))' and '$($first.SourcePath) (from $($first.Space))' both land on '$($a.DestPath)'. In plain terms: two $($script:SrcItem) items wrote the same SharePoint path, so one has overwritten the other. Both are in the collisions CSV and the report."
+            }
+        } catch { Write-MigrationLog WARN "  The cross-$($script:SrcItem) collision check could not run ($($_.Exception.Message)). The run itself is unaffected; the report still lists any collision." }
+    }
     foreach ($kind in 'renames','collisions') {
         $rowsK = New-Object System.Collections.Generic.List[object]
         foreach ($f in @(Get-ChildItem $ResultDir -Filter "$kind-*.csv" -ErrorAction SilentlyContinue)) { try { foreach ($r in @(Import-Csv $f.FullName)) { $rowsK.Add($r) } } catch {} }
+        if ($kind -eq 'collisions') { foreach ($x in $cross) { $rowsK.Add($x) } }
         if ($rowsK.Count) {
             $out = Join-Path $Config.run.reportRoot "$kind-$Mode-$Stamp.csv"
-            try { $rowsK | Export-Csv -Path $out -NoTypeInformation -Encoding UTF8; Write-MigrationLog OK "  $kind trail written: $out ($($rowsK.Count) row(s))" } catch {}
+            try { $rowsK | Protect-CsvRow | Export-Csv -Path $out -NoTypeInformation -Encoding UTF8; Write-MigrationLog OK "  $kind trail written: $out ($($rowsK.Count) row(s))" } catch {}
         }
     }
 }
-function Lzfb336c168f {
+function Lz0029aca01b {
     param($Config, $Rows, [string]$Mode, [string]$DeltaMode='NewerWins', [int]$SpoolAhead, [int]$MaxParallelSpaces, [switch]$Execute)
     $willWrite = [bool]$Execute
     Write-MigrationLog INFO "Parallel $($script:SrcItems): $($Rows.Count) $($script:SrcItem)(s), $MaxParallelSpaces at a time."
@@ -3962,7 +3988,7 @@ function Lzfb336c168f {
     $childExitCodes = New-Object System.Collections.Generic.List[int]
     $resultDir = Join-Path $Config.run.stateRoot ("_parallel-" + (Get-Date -Format 'yyyyMMdd-HHmmss'))
     New-Item -ItemType Directory -Path $resultDir -Force | Out-Null
-    if ($willWrite) { Lzeb4a5bffa4 -Config $Config -Mode $Mode -StartUtc $parallelStart -AuditFile '' -ExpectedFiles 0 -SpacesPlanned $Rows.Count -SpacesCompleted 0 -ResultDir $resultDir }
+    if ($willWrite) { Lzcb8d6b34a0 -Config $Config -Mode $Mode -StartUtc $parallelStart -AuditFile '' -ExpectedFiles 0 -SpacesPlanned $Rows.Count -SpacesCompleted 0 -ResultDir $resultDir }
     $pwshExe = [System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
     $self = $PSCommandPath
     $childLogDir = Join-Path $Config.run.logRoot 'parallel'
@@ -3971,7 +3997,7 @@ function Lzfb336c168f {
     foreach ($r in $Rows) { $queue.Enqueue($r.Space) }
     $running = @{}
     $childInfo = @{}
-    function Lz9fe058503f {
+    function Lz3914a995b0 {
         param($SpaceName)
         $q = { param($s)
             $s = "$s"
@@ -3999,7 +4025,7 @@ function Lzfb336c168f {
         $childInfo[$SpaceName] = @{ OutFile=$out; Pos=0; Partial=''; Done=0; Total=0; Bytes=[int64]0; BytesTotal=[int64]0 }
         return Start-Process -FilePath $pwshExe -ArgumentList $childArgs -PassThru -RedirectStandardOutput $out -RedirectStandardError $err -NoNewWindow
     }
-    function Lz66d89f6589 {
+    function Lz9c99732c38 {
         param($Space)
         $ci = $childInfo[$Space]
         if (-not $ci -or -not (Test-Path $ci.OutFile)) { return }
@@ -4029,30 +4055,30 @@ function Lzfb336c168f {
             }
         }
     }
-    function Lzce7facba45 {
+    function Lz6da28d1db2 {
         $sd=0; $st=0; $sb=[int64]0; $sbt=[int64]0
         foreach ($ci in $childInfo.Values) { $sd+=$ci.Done; $st+=$ci.Total; $sb+=$ci.Bytes; $sbt+=$ci.BytesTotal }
-        if ($st -gt 0) { Lzec4f69cda8 -Done $sd -Total $st -BytesDone $sb -BytesTotal $sbt -Space '(all projects)' }
+        if ($st -gt 0) { Lzf9ecd5acef -Done $sd -Total $st -BytesDone $sb -BytesTotal $sbt -Space '(all projects)' }
     }
     while ($queue.Count -gt 0 -or $running.Count -gt 0) {
         while ($running.Count -lt $MaxParallelSpaces -and $queue.Count -gt 0) {
             $sp = $queue.Dequeue()
             Write-MigrationLog INFO "  launch: $sp"
-            $running[(Lz9fe058503f -SpaceName $sp)] = $sp
+            $running[(Lz3914a995b0 -SpaceName $sp)] = $sp
         }
         Start-Sleep -Milliseconds 400
         foreach ($proc in @($running.Keys)) {
             $sp = $running[$proc]
-            Lz66d89f6589 -Space $sp
+            Lz9c99732c38 -Space $sp
             if ($proc.HasExited) {
-                Lz66d89f6589 -Space $sp
+                Lz9c99732c38 -Space $sp
                 $lvl = if ($proc.ExitCode -eq 0) { 'OK' } else { 'ERROR' }
                 Write-MigrationLog $lvl "  done: $sp (exit $($proc.ExitCode))"
                 $childExitCodes.Add([int]$proc.ExitCode)
                 $running.Remove($proc)
             }
         }
-        Lzce7facba45
+        Lz6da28d1db2
     }
     $all = New-Object System.Collections.Generic.List[object]
     foreach ($j in Get-ChildItem $resultDir -Filter *.json -ErrorAction SilentlyContinue) {
@@ -4085,7 +4111,7 @@ function Lzfb336c168f {
         Invoke-RunFinalize -Config $Config -AuditFile $emptyAudit -Mode $Mode -RunStart $parallelStart `
             -SpacesPlanned $Rows.Count -SpacesCompleted $spacesDone | Out-Null
     }
-    Lz83ae6f8d8b -Config $Config -ResultDir $resultDir -Mode $Mode -Stamp $stamp
+    Merge-ParallelSideFiles -Config $Config -ResultDir $resultDir -Mode $Mode -Stamp $stamp -Rows $Rows -AuditRows $auditRows
     if ($willWrite -and $Config.destination.provider -ne 'LocalSim' -and $auditRows.Count -and $auditOut -and (Test-Path $auditOut)) {
         $provOnP = $true
         try { if (((Test-ConfigProp $Config.run 'provenance')) -and ((Test-ConfigProp $Config.run.provenance 'enabled'))) { $provOnP = [bool]$Config.run.provenance.enabled } } catch {}
@@ -4095,7 +4121,7 @@ function Lzfb336c168f {
         }
     }
     Remove-Item $resultDir -Recurse -Force -ErrorAction SilentlyContinue
-    Lz92468b46d1 -Config $Config
+    Lzd3e1f270a0 -Config $Config
     $tc = Get-SafeSum -Items $all -Property Copied
     $tf = Get-SafeSum -Items $all -Property Failed
     $tv = Get-SafeSum -Items $all -Property VerifyFail
@@ -4203,7 +4229,7 @@ function Get-DestinationInventory {
                     $lmRaw = $null
                     try { $lmRaw = $c['fileSystemInfo']['lastModifiedDateTime'] } catch {}
                     if ($null -eq $lmRaw) { try { $lmRaw = $c['lastModifiedDateTime'] } catch {} }
-                    $times[$rel] = (Lz86fa93fa7d $lmRaw)
+                    $times[$rel] = (Lzf3dbbc26dd $lmRaw)
                 }
             }
         }
@@ -4223,7 +4249,7 @@ function Get-EvalKey {
     try { return (-join ($sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes("liscaragh-eval:$t")) | ForEach-Object { $_.ToString('x2') })) }
     finally { $sha.Dispose() }
 }
-function Lz92e3c6575c {
+function Lzcd3644a93c {
     $root = ''
     try { $root = "$env:LISCARA_EVAL_ROOT" } catch {}
     if ($root) { return @{ RegPath = ''; FilePath = (Join-Path $root 'eval.dat') } }
@@ -4232,7 +4258,7 @@ function Lz92e3c6575c {
     $fp = if ($pd) { Join-Path $pd (Join-Path 'Liscaragh' 'eval.dat') } else { '' }
     return @{ RegPath = 'HKCU:\Software\DattoMigration\State'; FilePath = $fp }
 }
-function Lz77e5e456f2 {
+function Lza9534a1f68 {
     param([string]$Value)
     $o = @{ FirstPass = 0; Delta = 0 }
     if ("$Value" -match 'F:(\d+)') { $o.FirstPass = [int]$Matches[1] }
@@ -4243,11 +4269,11 @@ function Get-EvalUsage {
     param([string]$Key)
     $out = @{ FirstPass = 0; Delta = 0 }
     if (-not $Key) { return $out }
-    $st = Lz92e3c6575c
+    $st = Lzcd3644a93c
     if ($st.RegPath) {
         try {
             $v = (Get-ItemProperty -Path $st.RegPath -Name $Key -ErrorAction Stop).$Key
-            $p = Lz77e5e456f2 "$v"
+            $p = Lza9534a1f68 "$v"
             if ($p.FirstPass -gt $out.FirstPass) { $out.FirstPass = $p.FirstPass }
             if ($p.Delta     -gt $out.Delta)     { $out.Delta     = $p.Delta }
         } catch {}
@@ -4257,7 +4283,7 @@ function Get-EvalUsage {
             if (Test-Path $st.FilePath) {
                 foreach ($line in (Get-Content $st.FilePath -ErrorAction Stop)) {
                     if ("$line".StartsWith("$Key=")) {
-                        $p = Lz77e5e456f2 "$line"
+                        $p = Lza9534a1f68 "$line"
                         if ($p.FirstPass -gt $out.FirstPass) { $out.FirstPass = $p.FirstPass }
                         if ($p.Delta     -gt $out.Delta)     { $out.Delta     = $p.Delta }
                     }
@@ -4273,7 +4299,7 @@ function Add-EvalUsage {
     $u = Get-EvalUsage -Key $Key
     if ($Bucket -eq 'FirstPass') { $u.FirstPass += $Count } else { $u.Delta += $Count }
     $val = "F:$($u.FirstPass);D:$($u.Delta)"
-    $st = Lz92e3c6575c
+    $st = Lzcd3644a93c
     if ($st.RegPath) {
         try {
             if (-not (Test-Path $st.RegPath)) { New-Item -Path $st.RegPath -Force | Out-Null }
@@ -4486,7 +4512,7 @@ function Get-RunDiagnosis {
         Projection=$projection; RetryDetail=$retryDetail; Concurrency=$concurrency; Headroom=$headroom
     }
 }
-function Lzd753acb4ba {
+function Lz5c1b21f5ba {
     param($Config, $Row, $Items, $Inv, [string]$EffectivePrefix = '', [hashtable]$JobAuditIndex = $null)
     $folderOf = {
         param([string]$Path)
@@ -4551,9 +4577,9 @@ function Lzd753acb4ba {
     }
     return ([pscustomobject]@{ Missing = $nMissing; Extra = $nExtra; OtherSource = $nOtherSource })
 }
-function Lza6ae2e3875 {
+function Lz6dcb0eec0c {
     param($Config, [string]$SpaceName, [string]$ResultDir)
-    Lz5716c7978d -Config $Config -Stage 'api-destinv'
+    Lz42ecc394a1 -Config $Config -Stage 'api-destinv'
     if (-not $SpaceName) { throw "DestInventory needs -Spaces with exactly one space name." }
     if (-not $ResultDir) { throw "DestInventory needs -ResultDir." }
     Connect-Destination -Config $Config
@@ -4579,7 +4605,7 @@ function Lza6ae2e3875 {
     $doc | ConvertTo-Json -Depth 4 -Compress | Set-Content -Path $out -Encoding UTF8
     Write-MigrationLog OK "  DESTINATION inventory written: $('{0:N0}' -f [int]$inv.Count) file(s). $out"
 }
-function Lz4ff81efc3c {
+function Lzba1b8ca8a6 {
     param($Config, $Row)
     try {
         $pwshExe = [System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
@@ -4613,7 +4639,7 @@ function Lz4ff81efc3c {
         return $null
     }
 }
-function Lz491dec77b9 {
+function Lzd152fa405e {
     param($Job)
     if (-not (Test-Path $Job.OutLog)) { return }
     $chunk = ''
@@ -4635,14 +4661,14 @@ function Receive-DestInventoryJob {
     if (-not $Job) { return (Get-DestinationInventory -Config $Config -Row $Row -WithTimes:$WithTimes) }
     $lastStatus = [DateTime]::UtcNow
     while (-not $Job.Process.HasExited) {
-        Lz491dec77b9 -Job $Job
+        Lzd152fa405e -Job $Job
         if ($script:GuiMode -and ([DateTime]::UtcNow - $lastStatus).TotalSeconds -ge 3) {
             $lastStatus = [DateTime]::UtcNow
             Write-Host "##STATUS##|Source: $('{0:N0}' -f $script:SrcTotal) files (done)   ->   Destination: still being read (started in parallel)..."
         }
         Start-Sleep -Milliseconds 400
     }
-    Lz491dec77b9 -Job $Job
+    Lzd152fa405e -Job $Job
     try {
         if ($Job.Process.ExitCode -ne 0) { throw "the destination child exited $($Job.Process.ExitCode); its log is $($Job.OutLog)" }
         if (-not (Test-Path $Job.File)) { throw "the destination child wrote no result file ($($Job.File))" }
@@ -4674,9 +4700,9 @@ function Receive-DestInventoryJob {
 }
 function Invoke-SizeCheck {
     param($Config, [string]$OnlySpace)
-    Lz5716c7978d -Config $Config -Stage 'api-sizecheck'
+    Lz42ecc394a1 -Config $Config -Stage 'api-sizecheck'
     $ckStart = Get-Date
-    Lz53d5cf954b -Config $Config
+    Lzdb130f4b19 -Config $Config
     Connect-Destination -Config $Config
     $mapPath = Join-Path $Config.run.reportRoot 'mapping.csv'
     if (-not (Test-Path $mapPath)) { Write-MigrationLog ERROR "No mapping.csv found. Set a destination and save the mapping first."; return }
@@ -4698,7 +4724,7 @@ function Invoke-SizeCheck {
         }
     } catch {}
     foreach ($row in $map) {
-        $i++; Lzec4f69cda8 -Done $i -Total $t -BytesDone 0 -BytesTotal 0 -Space $row.Space
+        $i++; Lzf9ecd5acef -Done $i -Total $t -BytesDone 0 -BytesTotal 0 -Space $row.Space
         try {
             $null = Resolve-DestinationDriveId -Config $Config -Row $row
             Write-MigrationLog OK "  destination reachable: $(Get-RowDestLabel $row). Reading the source now."
@@ -4708,7 +4734,7 @@ function Invoke-SizeCheck {
             continue
         }
         $space = New-SpaceRef -Row $row -Config $Config
-        $dj = Lz4ff81efc3c -Config $Config -Row $row
+        $dj = Lzba1b8ca8a6 -Config $Config -Row $row
         try {
             $items = @(Get-DattoItems -Config $Config -Space $space)
         } catch {
@@ -4721,7 +4747,7 @@ function Invoke-SizeCheck {
         $sb = Get-SafeSum -Items $items -Property Size
         $inv = Receive-DestInventoryJob -Config $Config -Row $row -Job $dj
         $effD = Join-SubPath $row.TargetSubFolder (Get-NestFolder $Config $row)
-        $d = Lzd753acb4ba -Config $Config -Row $row -Items $items -Inv $inv -EffectivePrefix $effD -JobAuditIndex $jobAuditIndex
+        $d = Lz5c1b21f5ba -Config $Config -Row $row -Items $items -Inv $inv -EffectivePrefix $effD -JobAuditIndex $jobAuditIndex
         $nMiss = [int]$d.Missing; $nExt = [int]$d.Extra; $nOther = [int]$d.OtherSource
         $dstCountOwn = [Math]::Max(0, [int]$inv.Count - $nOther)
         $dstBytesOwn = $inv.Bytes
@@ -4745,7 +4771,7 @@ function Invoke-SizeCheck {
         Write-MigrationLog INFO "The destination has more files than the source. That is normal if the destination already held content before the migration. To confirm every source file actually arrived, click 'Verify files arrived': it checks file by file and ignores pre-existing extras."
     }
     Write-MigrationLog INFO "Bytes differ from the source because Microsoft 365 rewrites Office files on upload, so treat totals as indicative. 'Verify files arrived' is the definitive per-file check."
-    try { Lzba520c31bf -Config $Config -Rows $scRows -SrcCount $tSrcC -SrcBytes $tSrcB -DstCount $tDstC -DstBytes $tDstB -Missing $tMissing -Extra $tExtra -NotChecked $scNotChecked } catch { Write-MigrationLog WARN "Compare report could not be written: $($_.Exception.Message)" }
+    try { Lz8e6478223b -Config $Config -Rows $scRows -SrcCount $tSrcC -SrcBytes $tSrcB -DstCount $tDstC -DstBytes $tDstB -Missing $tMissing -Extra $tExtra -NotChecked $scNotChecked } catch { Write-MigrationLog WARN "Compare report could not be written: $($_.Exception.Message)" }
     if ($script:GuiMode) {
         if ($scUnchecked -gt 0) { Write-Host "##CHECKOUTCOME##|BAD|could not compare $scUnchecked project(s) ($scNcText): the destination could not be reached or the source could not be read, so this is NOT a match. The reason is in the ERROR lines in the log below. Fix it, then compare again." }
         elseif ($tMissing -gt 0) { Write-Host "##CHECKOUTCOME##|WARN|found a problem: $('{0:N0}' -f $tMissing) file(s) in $($script:SrcNoun) are NOT at the destination, so some files may not have migrated. They are named in the log below and in the difference CSV.$(if ($tExtra) { " (The destination also holds $('{0:N0}' -f $tExtra) extra file(s), usually pre-existing content.)" }) Click 'Sync new and changed' to copy them, then compare again." }
@@ -4775,13 +4801,13 @@ function Invoke-SizeCheck {
                 "Destination: $($emVars['Destination'])")
     } catch {}
 }
-function Lz1de539cba6 {
+function Lz705d095416 {
     param($Config,[string]$Subtitle,[string]$Banner,[string]$Body)
     function _encS { param($s) [System.Net.WebUtility]::HtmlEncode("$s") }
     $brand = 'Liscaragh Migrate'
     if (((Test-ConfigProp $Config.run 'report')) -and ((Test-ConfigProp $Config.run.report 'brand')) -and $Config.run.report.brand) { $brand = "$($Config.run.report.brand)" }
     $now = Get-Date
-    $tv = Lza152ab30c8; $verSub = if ($tv) { " &middot; v$tv" } else { '' }
+    $tv = Lz45647fd8e5; $verSub = if ($tv) { " &middot; v$tv" } else { '' }
     return @"
 <!DOCTYPE html><html><head><meta charset='utf-8'><title>$(_encS $brand) - $(_encS $Subtitle)</title>
 <style>
@@ -4814,7 +4840,7 @@ $Body
 </div></body></html>
 "@
 }
-function Lzad81b39e1b {
+function Lz8141c7b407 {
     param($Config,$Report,$Missing,$Stale,$NotChecked)
     function _enc { param($s) [System.Net.WebUtility]::HtmlEncode("$s") }
     if ($null -eq $NotChecked) { $NotChecked = @() } else { $NotChecked = [object[]]$NotChecked }
@@ -4868,12 +4894,12 @@ $ncSec
 $missSec
 $staleSec
 "@
-    $html = Lz1de539cba6 -Config $Config -Subtitle 'Verify files arrived (per-file check)' -Banner $banner -Body $body
+    $html = Lz705d095416 -Config $Config -Subtitle 'Verify files arrived (per-file check)' -Banner $banner -Body $body
     $outPath = Join-Path $Config.run.reportRoot ("report-validation-" + (Get-Date).ToString('yyyyMMdd-HHmmss') + ".html")
     Set-Content -Path $outPath -Value $html -Encoding UTF8
     Write-MigrationLog OK "Verify report written: $outPath"
 }
-function Lzba520c31bf {
+function Lz8e6478223b {
     param($Config,$Rows,[int]$SrcCount,[int64]$SrcBytes,[int]$DstCount,[int64]$DstBytes,[int]$Missing,[int]$Extra,$NotChecked)
     function _enc { param($s) [System.Net.WebUtility]::HtmlEncode("$s") }
     if ($null -eq $Rows) { $Rows = @() } else { $Rows = [object[]]$Rows }
@@ -4902,7 +4928,7 @@ $rowHtml
 $(if ($NotChecked.Count) { "<h2>Could not be compared ($($NotChecked.Count))</h2><table><thead><tr><th>$($script:SrcItemCap)</th><th>Why</th></tr></thead><tbody>" + (@($NotChecked | ForEach-Object { "<tr><td>$(_enc $_.Space)</td><td>$(_enc $_.Reason)</td></tr>" }) -join "`n") + "</tbody></table>" })
 <p class='dim'>Bytes differ from the source because Microsoft 365 rewrites Office files on upload, so treat totals as indicative. 'Verify files arrived' is the definitive per-file check.</p>
 "@
-    $html = Lz1de539cba6 -Config $Config -Subtitle 'Compare sizes (count and byte overview)' -Banner $banner -Body $body
+    $html = Lz705d095416 -Config $Config -Subtitle 'Compare sizes (count and byte overview)' -Banner $banner -Body $body
     $outPath = Join-Path $Config.run.reportRoot ("report-sizecheck-" + (Get-Date).ToString('yyyyMMdd-HHmmss') + ".html")
     Set-Content -Path $outPath -Value $html -Encoding UTF8
     Write-MigrationLog OK "Compare report written: $outPath"
@@ -4962,7 +4988,7 @@ function Get-ImageMimeType {
 $script:LiscaraghLogoB64 = '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'
 function Invoke-HtmlReport {
     param($Config, [string]$AuditPath, [switch]$NoStageLog)
-    if (-not $NoStageLog) { Lz5716c7978d -Config $Config -Stage 'api-report' }
+    if (-not $NoStageLog) { Lz42ecc394a1 -Config $Config -Stage 'api-report' }
     if (-not $AuditPath) {
         $latest = Get-ChildItem (Join-Path $Config.run.reportRoot 'audit-*.csv') -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
         if ($latest) { $AuditPath = $latest.FullName }
@@ -4973,7 +4999,7 @@ function Invoke-HtmlReport {
     $rows   = @($rows | Where-Object { "$($_.Status)" -notlike 'RUN_END:*' })
     if (-not $rows.Count) { Write-MigrationLog WARN "Audit CSV is empty: $AuditPath"; Write-NothingProducedOutcome "no report was written: the last run's audit trail is empty, so there is nothing to report on."; return }
     function _enc { param($s) [System.Net.WebUtility]::HtmlEncode("$s") }
-    function Lz2a0ab1d46b { param($st) @($rows | Where-Object { $_.Status -eq $st }).Count }
+    function Lzc514e50528 { param($st) @($rows | Where-Object { $_.Status -eq $st }).Count }
     function _fmtMs { param([double]$ms)
         if ($ms -le 0) { return '' }
         if ($ms -lt 60000) { return ('{0:0.0} s' -f ($ms / 1000)) }
@@ -4989,12 +5015,12 @@ function Invoke-HtmlReport {
         $logoTag = Get-BrandLogoTag -Config $Config
     }
     $total = $rows.Count
-    $copied = (Lz2a0ab1d46b 'Copied') + (Lz2a0ab1d46b 'ZeroByte')
-    $skipped = Lz2a0ab1d46b 'Skipped'
-    $notAttempted = Lz2a0ab1d46b 'NotAttempted'
-    $errors = (Lz2a0ab1d46b 'Error') + (Lz2a0ab1d46b 'DownloadError') + (Lz2a0ab1d46b 'SkippedTooLarge')
-    $verifyFail = Lz2a0ab1d46b 'VerifyFail'
-    $wouldCopy = Lz2a0ab1d46b 'WouldCopy'
+    $copied = (Lzc514e50528 'Copied') + (Lzc514e50528 'ZeroByte')
+    $skipped = Lzc514e50528 'Skipped'
+    $notAttempted = Lzc514e50528 'NotAttempted'
+    $errors = (Lzc514e50528 'Error') + (Lzc514e50528 'DownloadError') + (Lzc514e50528 'SkippedTooLarge')
+    $verifyFail = Lzc514e50528 'VerifyFail'
+    $wouldCopy = Lzc514e50528 'WouldCopy'
     $retried = @($rows | Where-Object { [int]$_.Retries -gt 0 }).Count
     $copiedBytes = _sumBytes (@($rows | Where-Object { $_.Status -eq 'Copied' -or $_.Status -eq 'ZeroByte' }))
     $dryRun = ($wouldCopy -gt 0 -and $copied -eq 0)
@@ -5163,7 +5189,7 @@ $bigBits
     $qualityBits = ''
     if ($collisions.Count) {
         $cr=''; foreach ($x in ($collisions | Select-Object -First 300)) { $cr += "<tr><td>$(_enc $x.Dest)</td><td>$(_enc ($x.Sources -join '  |  '))</td></tr>`n" }
-        $qualityBits += "<details open><summary style='color:#B42318'><strong>$($collisions.Count) name collision(s)</strong>: different Datto items share one destination path &middot; click for details</summary><table><thead><tr><th>Destination path</th><th>Datto sources that collide</th></tr></thead><tbody>$cr</tbody></table></details>"
+        $qualityBits += "<details open><summary style='color:#B42318'><strong>$($collisions.Count) name collision(s)</strong>: different $($script:SrcNounBare) items share one destination path &middot; click for details</summary><table><thead><tr><th>Destination path</th><th>$($script:SrcItemCap) items that collide</th></tr></thead><tbody>$cr</tbody></table></details>"
     }
     if ($renamed.Count) {
         $rr=''; foreach ($x in ($renamed | Select-Object -First 300)) { $of = if (((Test-ConfigProp $x 'RenamedFrom')) -and $x.RenamedFrom) { $x.RenamedFrom } else { $x.SourcePath }; $rr += "<tr><td>$(_enc $of)</td><td>$(_enc $x.DestPath)</td></tr>`n" }
@@ -5247,29 +5273,29 @@ $bigBits
     $statusBanner = "<div style='$bannerStyle;border-radius:8px;padding:14px 16px;margin:0 0 18px;font-size:14px'><strong>$(_enc $bannerTitle)</strong>$bannerExtra</div>"
     $title = if ($dryRun) { 'Migration Readiness (preview)' } else { 'Migration Report' }
     $now = Get-Date
-    $tv = Lza152ab30c8
+    $tv = Lz45647fd8e5
     $verSub = if ($tv) { " &middot; v$tv" } else { '' }
     $runType = 'run'; if ([IO.Path]::GetFileName($AuditPath) -match '^audit-([A-Za-z]+)-') { $runType = $Matches[1] }
-    function Lz4090ffd2a7 { param([string]$k, [string]$v) if (-not "$v".Trim()) { $v = '&mdash;' }; return "<tr><td>$k</td><td>$v</td></tr>`n" }
+    function Lz731b1b9881 { param([string]$k, [string]$v) if (-not "$v".Trim()) { $v = '&mdash;' }; return "<tr><td>$k</td><td>$v</td></tr>`n" }
     $rdRows = ''
     $runTypeLabel = switch ($runType) {
         'FirstPass' { if ($dryRun) { 'Preview (dry run, nothing uploaded)' } else { 'Full upload (first pass)' } }
         'Delta'     { 'Sync new and changed (delta)' }
         default     { $runType }
     }
-    $rdRows += Lz4090ffd2a7 'Run type' (_enc $runTypeLabel)
-    $rdRows += Lz4090ffd2a7 'Source' (_enc $script:SrcSysName)
-    $rdRows += Lz4090ffd2a7 "$($script:SrcItemCap)s in this run" ("$((@($rows | Group-Object Space)).Count)")
+    $rdRows += Lz731b1b9881 'Run type' (_enc $runTypeLabel)
+    $rdRows += Lz731b1b9881 'Source' (_enc $script:SrcSysName)
+    $rdRows += Lz731b1b9881 "$($script:SrcItemCap)s in this run" ("$((@($rows | Group-Object Space)).Count)")
     try { if ($times.Count -ge 2) {
-        $rdRows += Lz4090ffd2a7 'Started'  (_enc (($times | Measure-Object -Minimum).Minimum.ToLocalTime().ToString('dd MMM yyyy HH:mm:ss')))
-        $rdRows += Lz4090ffd2a7 'Finished' (_enc (($times | Measure-Object -Maximum).Maximum.ToLocalTime().ToString('dd MMM yyyy HH:mm:ss')))
-        $rdRows += Lz4090ffd2a7 'Copying window' (_enc $elapsedStr)
+        $rdRows += Lz731b1b9881 'Started'  (_enc (($times | Measure-Object -Minimum).Minimum.ToLocalTime().ToString('dd MMM yyyy HH:mm:ss')))
+        $rdRows += Lz731b1b9881 'Finished' (_enc (($times | Measure-Object -Maximum).Maximum.ToLocalTime().ToString('dd MMM yyyy HH:mm:ss')))
+        $rdRows += Lz731b1b9881 'Copying window' (_enc $elapsedStr)
     } } catch {}
-    try { if ("$env:USERNAME".Trim()) { $rdRows += Lz4090ffd2a7 'Run by' (_enc ("$env:USERNAME" + $(if ("$env:COMPUTERNAME".Trim()) { " on $env:COMPUTERNAME" }))) } } catch {}
-    $rdRows += Lz4090ffd2a7 'App version' (_enc "$tv")
+    try { if ("$env:USERNAME".Trim()) { $rdRows += Lz731b1b9881 'Run by' (_enc ("$env:USERNAME" + $(if ("$env:COMPUTERNAME".Trim()) { " on $env:COMPUTERNAME" }))) } } catch {}
+    $rdRows += Lz731b1b9881 'App version' (_enc "$tv")
     try {
         $w = 4; if (((Test-ConfigProp $Config.run 'upload')) -and ((Test-ConfigProp $Config.run.upload 'workers'))) { $w = [int]$Config.run.upload.workers }
-        $rdRows += Lz4090ffd2a7 'Parallel uploads' ("$w")
+        $rdRows += Lz731b1b9881 'Parallel uploads' ("$w")
     } catch {}
     try {
         $bwU = 0; $bwD = 0
@@ -5277,7 +5303,7 @@ $bigBits
             if ((Test-ConfigProp $Config.run.bandwidth 'maxUploadMbps'))   { $bwU = [int]$Config.run.bandwidth.maxUploadMbps }
             if ((Test-ConfigProp $Config.run.bandwidth 'maxDownloadMbps')) { $bwD = [int]$Config.run.bandwidth.maxDownloadMbps }
         }
-        $rdRows += Lz4090ffd2a7 'Speed limits' $(if ($bwU -or $bwD) { "upload $(if($bwU){"$bwU Mb/s"}else{'unlimited'}), download $(if($bwD){"$bwD Mb/s"}else{'unlimited'})" } else { 'none (unlimited)' })
+        $rdRows += Lz731b1b9881 'Speed limits' $(if ($bwU -or $bwD) { "upload $(if($bwU){"$bwU Mb/s"}else{'unlimited'}), download $(if($bwD){"$bwD Mb/s"}else{'unlimited'})" } else { 'none (unlimited)' })
     } catch {}
     try {
         $fBits = @()
@@ -5288,10 +5314,10 @@ $bigBits
             if (((Test-ConfigProp $tn 'modifiedAfter'))  -and "$($tn.modifiedAfter)".Trim())  { $fBits += "modified after $($tn.modifiedAfter)" }
             if (((Test-ConfigProp $tn 'modifiedBefore')) -and "$($tn.modifiedBefore)".Trim()) { $fBits += "modified before $($tn.modifiedBefore)" }
         }
-        $rdRows += Lz4090ffd2a7 'Filters' $(if ($fBits.Count) { _enc ($fBits -join '; ') } else { 'none (everything included)' })
+        $rdRows += Lz731b1b9881 'Filters' $(if ($fBits.Count) { _enc ($fBits -join '; ') } else { 'none (everything included)' })
     } catch {}
-    try { $rdRows += Lz4090ffd2a7 'Name tidying' $(if (((Test-ConfigProp $Config.run 'sanitiseNames')) -and $Config.run.sanitiseNames) { 'on (M365-illegal names corrected and recorded)' } else { 'off' }) } catch {}
-    $rdRows += Lz4090ffd2a7 'Audit record' (_enc ([System.IO.Path]::GetFileName($AuditPath)))
+    try { $rdRows += Lz731b1b9881 'Name tidying' $(if (((Test-ConfigProp $Config.run 'sanitiseNames')) -and $Config.run.sanitiseNames) { 'on (M365-illegal names corrected and recorded)' } else { 'off' }) } catch {}
+    $rdRows += Lz731b1b9881 'Audit record' (_enc ([System.IO.Path]::GetFileName($AuditPath)))
     $runDetailsSection = "<h2 id='rundetails'>Run details</h2><table style='width:auto'><tbody>$rdRows</tbody></table>"
     $insightBits = ''
     if (-not $dryRun -and $copiedRows.Count) {
@@ -5405,7 +5431,7 @@ function Write-NothingProducedOutcome {
 }
 function Invoke-CompletionCertificate {
     param($Config, [string]$AuditPath, [switch]$NoStageLog)
-    if (-not $NoStageLog) { Lz5716c7978d -Config $Config -Stage 'api-certificate' }
+    if (-not $NoStageLog) { Lz42ecc394a1 -Config $Config -Stage 'api-certificate' }
     if (-not $AuditPath) {
         $latest = Get-ChildItem (Join-Path $Config.run.reportRoot 'audit-*.csv') -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
         if ($latest) { $AuditPath = $latest.FullName }
@@ -5416,13 +5442,13 @@ function Invoke-CompletionCertificate {
     $rows   = @($rows | Where-Object { "$($_.Status)" -notlike 'RUN_END:*' })
     if (-not $rows.Count) { Write-MigrationLog WARN "Audit CSV is empty: $AuditPath"; Write-NothingProducedOutcome "no certificate was issued: the last run's audit trail is empty, so there is nothing to certify."; return }
     function _enc { param($s) [System.Net.WebUtility]::HtmlEncode("$s") }
-    function Lz2a0ab1d46b { param($st) @($rows | Where-Object { $_.Status -eq $st }).Count }
+    function Lzc514e50528 { param($st) @($rows | Where-Object { $_.Status -eq $st }).Count }
     function _sumBytes { param($items) Get-SafeSum -Items $items -Property SourceSizeBytes }
-    $copied  = (Lz2a0ab1d46b 'Copied') + (Lz2a0ab1d46b 'ZeroByte')
-    $skipped = Lz2a0ab1d46b 'Skipped'
-    $errors  = (Lz2a0ab1d46b 'Error') + (Lz2a0ab1d46b 'DownloadError') + (Lz2a0ab1d46b 'SkippedTooLarge')
-    $verifyFail = Lz2a0ab1d46b 'VerifyFail'
-    $wouldCopy  = Lz2a0ab1d46b 'WouldCopy'
+    $copied  = (Lzc514e50528 'Copied') + (Lzc514e50528 'ZeroByte')
+    $skipped = Lzc514e50528 'Skipped'
+    $errors  = (Lzc514e50528 'Error') + (Lzc514e50528 'DownloadError') + (Lzc514e50528 'SkippedTooLarge')
+    $verifyFail = Lzc514e50528 'VerifyFail'
+    $wouldCopy  = Lzc514e50528 'WouldCopy'
     $present = $copied + $skipped
     $presentBytes = _sumBytes (@($rows | Where-Object { $_.Status -eq 'Copied' -or $_.Status -eq 'ZeroByte' -or $_.Status -eq 'Skipped' }))
     $projects = @($rows | Where-Object { "$($_.Space)".Trim() } | Group-Object Space).Count
@@ -5462,7 +5488,7 @@ function Invoke-CompletionCertificate {
     if ($withErrors) {
         $caveat = "<div class='caveat'><strong>Issued with exceptions.</strong> $($errors + $verifyFail) file(s) need attention and are listed in the migration report; every other file is present and verified. This certificate records the migration as complete apart from those items.</div>"
     }
-    $tv = Lza152ab30c8; $verSub = if ($tv) { " &middot; v$tv" } else { '' }
+    $tv = Lz45647fd8e5; $verSub = if ($tv) { " &middot; v$tv" } else { '' }
     $now = Get-Date
     $refName = [System.IO.Path]::GetFileName($AuditPath)
     $html = @"
@@ -5522,7 +5548,7 @@ $caveat
 }
 function Invoke-DriftCheck {
     param($Config)
-    Lz5716c7978d -Config $Config -Stage 'api-drift'
+    Lz42ecc394a1 -Config $Config -Stage 'api-drift'
     $mapPathD = Join-Path $Config.run.reportRoot 'mapping.csv'
     if (-not (Test-Path $mapPathD)) {
         Write-MigrationLog ERROR "No mapping.csv found, so there is nothing to check. Set a destination and save the mapping first."
@@ -5555,7 +5581,7 @@ function Invoke-DriftCheck {
     $tol = [TimeSpan]::FromSeconds(5)
     $t = $map.Count; $i = 0
     foreach ($row in $map) {
-        $i++; Lz5669edadca -Activity 'Drift check' -Status $row.Space -Current $i -Total $t | Out-Null
+        $i++; Lz305671cacc -Activity 'Drift check' -Status $row.Space -Current $i -Total $t | Out-Null
         if ($script:GuiMode) { Write-Host "##STATUS##|Checking [$($row.Space)] for changes at the destination since migration..." }
         try {
             $null = Resolve-DestinationDriveId -Config $Config -Row $row
@@ -5612,14 +5638,14 @@ function Invoke-DriftCheck {
     $ncD = (@($driftNotChecked) -join ', ')
     if ($driftNotChecked.Count) { Write-MigrationLog ERROR "Drift could NOT be checked for $($driftNotChecked.Count) $($script:SrcItem)(s) ($ncD): the destination could not be reached. This is not a clean result." }
     elseif (($chg + $del) -eq 0) { Write-MigrationLog OK "No drift: every file this job migrated is still at the destination, unchanged since migration." }
-    Lz46631e1cc7 -Config $Config -Rows $rows -Changed $chg -Deleted $del -Added $add -BaselineCount $base.Count -NotChecked @($driftNotChecked)
+    Lze13eac48d4 -Config $Config -Rows $rows -Changed $chg -Deleted $del -Added $add -BaselineCount $base.Count -NotChecked @($driftNotChecked)
     if ($script:GuiMode) {
         if ($driftNotChecked.Count)  { Write-Host "##CHECKOUTCOME##|BAD|could not check $($driftNotChecked.Count) $($script:SrcItem)(s) ($ncD): the destination could not be reached, so this is not a clean result. The reason is in the ERROR lines in the log below." }
         elseif (($chg + $del) -gt 0) { Write-Host "##CHECKOUTCOME##|WARN|the destination has drifted since migration: $chg changed, $del deleted, $add added. The drift report and CSV list every file." }
         else                         { Write-Host "##CHECKOUTCOME##|OK|no drift: every file this job migrated is still at the destination, unchanged.$(if ($add) { " $add file(s) there were not migrated by this job." })" }
     }
 }
-function Lz46631e1cc7 {
+function Lze13eac48d4 {
     param($Config,$Rows,[int]$Changed,[int]$Deleted,[int]$Added,[int]$BaselineCount,$NotChecked)
     function _enc { param($s) [System.Net.WebUtility]::HtmlEncode("$s") }
     if ($null -eq $Rows) { $Rows = @() } else { $Rows = [object[]]$Rows }
@@ -5659,16 +5685,16 @@ function Lz46631e1cc7 {
 $sec
 <p class='dim'>How this decides: the audit record of every migrated file (size and migration moment) against the destination as it is right now. A later modified time or a different size means the copy was touched after migration. Read-only on both sides.</p>
 "@
-    $html = Lz1de539cba6 -Config $Config -Subtitle 'Destination drift (changes since migration)' -Banner $banner -Body $body
+    $html = Lz705d095416 -Config $Config -Subtitle 'Destination drift (changes since migration)' -Banner $banner -Body $body
     $outPath = Join-Path $Config.run.reportRoot ("report-drift-" + (Get-Date).ToString('yyyyMMdd-HHmmss') + ".html")
     Set-Content -Path $outPath -Value $html -Encoding UTF8
     Write-MigrationLog OK "Drift report written: $outPath"
 }
 function Invoke-Validate {
     param($Config)
-    Lz5716c7978d -Config $Config -Stage 'api-validation'
+    Lz42ecc394a1 -Config $Config -Stage 'api-validation'
     $ckStart = Get-Date
-    Lz53d5cf954b -Config $Config
+    Lzdb130f4b19 -Config $Config
     Connect-Destination -Config $Config
     $map = @(Import-Csv (Join-Path $Config.run.reportRoot 'mapping.csv') | Where-Object Action -eq 'MIGRATE')
     foreach ($old in 'api-validation-missing.csv','api-validation-stale.csv') { try { Remove-Item -LiteralPath (Join-Path $Config.run.reportRoot $old) -Force -ErrorAction SilentlyContinue } catch {} }
@@ -5691,7 +5717,7 @@ function Invoke-Validate {
     } catch {}
     $t = $map.Count; $i = 0
     foreach ($row in $map) {
-        $i++; Lz5669edadca -Activity 'Verify' -Status $row.Space -Current $i -Total $t | Out-Null
+        $i++; Lz305671cacc -Activity 'Verify' -Status $row.Space -Current $i -Total $t | Out-Null
         if ($script:GuiMode) { Write-Host "##STATUS##|Verifying files arrived in [$($row.Space)]: checking each is present and up to date..." }
         try {
             $null = Resolve-DestinationDriveId -Config $Config -Row $row
@@ -5703,7 +5729,7 @@ function Invoke-Validate {
             continue
         }
         $space = New-SpaceRef -Row $row -Config $Config
-        $dj = Lz4ff81efc3c -Config $Config -Row $row
+        $dj = Lzba1b8ca8a6 -Config $Config -Row $row
         try {
             $items = @(Get-DattoItems -Config $Config -Space $space)
         } catch {
@@ -5766,7 +5792,7 @@ function Invoke-Validate {
     $checkedRows = @($report | Where-Object Verdict -ne 'NOT CHECKED').Count
     $unchecked = $notChecked.Count
     if ($checkedRows -eq 0 -and $unchecked -eq 0) { $notChecked.Add([pscustomobject]@{ Space = '(none)'; Reason = 'no mapped project could be checked' }); $unchecked = 1 }
-    try { Lzad81b39e1b -Config $Config -Report $report -Missing $missingAll -Stale $staleAll -NotChecked $notChecked } catch { Write-MigrationLog WARN "Verify report could not be written: $($_.Exception.Message)" }
+    try { Lz8141c7b407 -Config $Config -Report $report -Missing $missingAll -Stale $staleAll -NotChecked $notChecked } catch { Write-MigrationLog WARN "Verify report could not be written: $($_.Exception.Message)" }
     if ($missingAll.Count) {
         $missingAll | Protect-CsvRow | Export-Csv -Path (Join-Path $Config.run.reportRoot 'api-validation-missing.csv') -NoTypeInformation -Encoding UTF8
         if ($script:GuiMode) { Write-Host "##CHECKFILES##|$($missingAll.Count)|0|0|$(Join-Path $Config.run.reportRoot 'api-validation-missing.csv')" }
@@ -5810,19 +5836,19 @@ function Invoke-Validate {
                 "Destination: $($emVars['Destination'])")
     } catch {}
 }
-function Lz0997bdb4db {
+function Lza769130564 {
     param($Config)
-    Lz5716c7978d -Config $Config -Stage 'api-permissions'
-    Lz53d5cf954b -Config $Config
+    Lz42ecc394a1 -Config $Config -Stage 'api-permissions'
+    Lzdb130f4b19 -Config $Config
     $map = @(Import-Csv (Join-Path $Config.run.reportRoot 'mapping.csv') | Where-Object Action -eq 'MIGRATE')
-    function Lz0c69481a86 { param([string]$r) switch -Regex ($r.ToLower()) { 'owner|manage|admin'{'Site Owner (Full Control)';break} 'edit|write|contrib'{'Member (Edit)';break} 'view|read'{'Visitor (Read)';break} default{'REVIEW'} } }
+    function Lz16039f48d1 { param([string]$r) switch -Regex ($r.ToLower()) { 'owner|manage|admin'{'Site Owner (Full Control)';break} 'edit|write|contrib'{'Member (Edit)';break} 'view|read'{'Visitor (Read)';break} default{'REVIEW'} } }
     $plan = New-Object System.Collections.Generic.List[object]
     $t = $map.Count; $i = 0
     foreach ($row in $map) {
-        $i++; Lz5669edadca -Activity 'Permissions' -Status $row.Space -Current $i -Total $t | Out-Null
+        $i++; Lz305671cacc -Activity 'Permissions' -Status $row.Space -Current $i -Total $t | Out-Null
         $space = New-SpaceRef -Row $row -Config $Config
-        foreach ($p in @(Lzbab156f421 -Config $Config -Space $space)) {
-            $plan.Add([pscustomobject]@{ Space=$row.Space; Principal=$p.Principal; DattoRole=$p.Role; DestinationUrl=$row.DestinationUrl; ProposedM365Role=(Lz0c69481a86 $p.Role) })
+        foreach ($p in @(Lzd7c36f2fc4 -Config $Config -Space $space)) {
+            $plan.Add([pscustomobject]@{ Space=$row.Space; Principal=$p.Principal; DattoRole=$p.Role; DestinationUrl=$row.DestinationUrl; ProposedM365Role=(Lz16039f48d1 $p.Role) })
         }
     }
     try { Write-Progress -Activity 'Permissions' -Completed } catch {}
@@ -5833,16 +5859,16 @@ function Lz0997bdb4db {
 }
 function Invoke-SourceReview {
     param($Config, [switch]$NoStageLog)
-    if (-not $NoStageLog) { Lz5716c7978d -Config $Config -Stage 'api-sourcereview' }
+    if (-not $NoStageLog) { Lz42ecc394a1 -Config $Config -Stage 'api-sourcereview' }
     $started = Get-Date
     $isSim = ($Config.datto.provider -eq 'LocalSim')
-    if (-not $isSim) { Lz53d5cf954b -Config $Config }
+    if (-not $isSim) { Lzdb130f4b19 -Config $Config }
     function _raw { param($o, [string]$n) if ($null -ne $o -and ((Test-ConfigProp $o $n))) { return $o.$n }; return $null }
-    function Lz574ab185e3 { param($ms) try { $v = [int64]$ms; if ($v -gt 0) { $x = if ($v -gt 100000000000) { $v } else { $v * 1000 }; return [DateTimeOffset]::FromUnixTimeMilliseconds($x).UtcDateTime.ToString('dd MMM yyyy HH:mm') } } catch {}; return '' }
+    function Lz97a92a723d { param($ms) try { $v = [int64]$ms; if ($v -gt 0) { $x = if ($v -gt 100000000000) { $v } else { $v * 1000 }; return [DateTimeOffset]::FromUnixTimeMilliseconds($x).UtcDateTime.ToString('dd MMM yyyy HH:mm') } } catch {}; return '' }
     $nodes = New-Object System.Collections.Generic.List[object]
     $suspects = [System.Collections.Generic.List[object]]::new()
     $stats = @{ Projects = 0; Folders = 0; Files = 0; Calls = 0; Pub = 0; Locked = 0; NotReady = 0 }
-    function Lz4fc1f17a79 { param([string]$Space, [string]$Path, [string]$Kind, $Pub, $Link, $By, [int64]$Size, [string]$ModUtc, $Locked, [string]$LockName, [string]$LockEmail, [string]$LockSince, $NotReady, [string]$ReadyReason)
+    function Lza8cd193737 { param([string]$Space, [string]$Path, [string]$Kind, $Pub, $Link, $By, [int64]$Size, [string]$ModUtc, $Locked, [string]$LockName, [string]$LockEmail, [string]$LockSince, $NotReady, [string]$ReadyReason)
         $nodes.Add([pscustomobject]@{
             Space = $Space; Path = $Path; Kind = $Kind
             IsPublic = [bool]$Pub; Link = "$Link"; ChangedBy = "$By"; SizeBytes = $Size; ModifiedUtc = $ModUtc
@@ -5853,19 +5879,19 @@ function Invoke-SourceReview {
     if ($isSim) {
         foreach ($sp in @(Get-DattoSpaces -Config $Config)) {
             $stats.Projects++
-            Lz4fc1f17a79 -Space $sp.Name -Path '' -Kind 'Project' -Pub $false -Link '' -By '' -Size 0 -ModUtc '' -Locked $false -LockName '' -LockEmail '' -LockSince '' -NotReady $false -ReadyReason ''
+            Lza8cd193737 -Space $sp.Name -Path '' -Kind 'Project' -Pub $false -Link '' -By '' -Size 0 -ModUtc '' -Locked $false -LockName '' -LockEmail '' -LockSince '' -NotReady $false -ReadyReason ''
             foreach ($e in @(Get-ChildItem -LiteralPath $sp.Id -Recurse -Force -ErrorAction SilentlyContinue)) {
                 $rel = $e.FullName.Substring($sp.Id.Length).TrimStart('\', '/') -replace '\\', '/'
                 $pub = ($e.Name -like '*~PUBLIC~*'); $lck = ($e.Name -like '*~LOCKED~*'); $off = ($e.Name -like '*~OFFLINE~*')
                 if ($pub) { $stats.Pub++ }
                 if ($e.PSIsContainer) {
                     $stats.Folders++
-                    Lz4fc1f17a79 -Space $sp.Name -Path $rel -Kind 'Folder' -Pub $pub -Link '' -By '' -Size 0 -ModUtc '' -Locked $false -LockName '' -LockEmail '' -LockSince '' -NotReady $false -ReadyReason ''
+                    Lza8cd193737 -Space $sp.Name -Path $rel -Kind 'Folder' -Pub $pub -Link '' -By '' -Size 0 -ModUtc '' -Locked $false -LockName '' -LockEmail '' -LockSince '' -NotReady $false -ReadyReason ''
                 } else {
                     $stats.Files++
                     if ($lck) { $stats.Locked++ }
                     if ($off) { $stats.NotReady++ }
-                    Lz4fc1f17a79 -Space $sp.Name -Path $rel -Kind 'File' -Pub $pub -Link '' -By 'Sim User' -Size ([int64]$e.Length) -ModUtc ($e.LastWriteTimeUtc.ToString('o')) `
+                    Lza8cd193737 -Space $sp.Name -Path $rel -Kind 'File' -Pub $pub -Link '' -By 'Sim User' -Size ([int64]$e.Length) -ModUtc ($e.LastWriteTimeUtc.ToString('o')) `
                         -Locked $lck -LockName $(if ($lck) { 'Sim Locker' } else { '' }) -LockEmail $(if ($lck) { 'lock@example.com' } else { '' }) -LockSince $(if ($lck) { '01 Jan 2026 09:00' } else { '' }) `
                         -NotReady $off -ReadyReason $(if ($off) { 'not fully stored in the cloud' } else { '' })
                 }
@@ -5880,14 +5906,14 @@ function Invoke-SourceReview {
         if (Test-Path $mapPath) { $mapRows = @(Import-Csv $mapPath | Where-Object { "$($_.Action)" -eq 'MIGRATE' }) }
         if (-not $mapRows.Count) { Write-MigrationLog WARN "Source review: no folders are selected for this job (no MIGRATE rows in mapping.csv). Nothing to scan." }
         else { Write-MigrationLog INFO "Source review: $($mapRows.Count) folder(s) in this job to scan (metadata=$($q.metadata))." }
-        function Lzf941fbd0f9 { param($it, [string]$SpaceName, [string]$Rel, [bool]$IsFolder)
+        function Lz37e6d2235f { param($it, [string]$SpaceName, [string]$Rel, [bool]$IsFolder)
             $pub = $false; try { $pub = [bool](_raw $it 'isPublicLink') } catch {}
             $link = ''; if ($pub) { $link = "$(_raw $it 'fileLink')" }
             $by = "$(_raw $it 'changedByUserName')"
             $lockObj = _raw $it 'lock'
             $locked = ($null -ne $lockObj -and "$lockObj".Trim() -ne '')
             $ln = ''; $le = ''; $ls = ''
-            if ($locked) { $ln = "$(_raw $lockObj 'fullname')"; $le = "$(_raw $lockObj 'email')"; $ls = Lz574ab185e3 (_raw $lockObj 'lockedSince') }
+            if ($locked) { $ln = "$(_raw $lockObj 'fullname')"; $le = "$(_raw $lockObj 'email')"; $ls = Lz97a92a723d (_raw $lockObj 'lockedSince') }
             $notReady = $false; $reason = ''
             if (-not $IsFolder) {
                 $stored = _raw $it 'stored'; $online = _raw $it 'online'
@@ -5900,10 +5926,10 @@ function Invoke-SourceReview {
             if ($pub) { $stats.Pub++ }
             if ($locked) { $stats.Locked++ }
             if ($notReady) { $stats.NotReady++ }
-            Lz4fc1f17a79 -Space $SpaceName -Path $Rel -Kind $(if ($IsFolder) { 'Folder' } else { 'File' }) -Pub $pub -Link $link -By $by -Size $size -ModUtc $mod `
+            Lza8cd193737 -Space $SpaceName -Path $Rel -Kind $(if ($IsFolder) { 'Folder' } else { 'File' }) -Pub $pub -Link $link -By $by -Size $size -ModUtc $mod `
                 -Locked $locked -LockName $ln -LockEmail $le -LockSince $ls -NotReady $notReady -ReadyReason $reason
         }
-        function Lzb60ced94cb { param($ParentId, [string]$SpaceName, [string]$Prefix)
+        function Lz06fe225d95 { param($ParentId, [string]$SpaceName, [string]$Prefix)
             $childPath = ($Config.datto.apiPaths.listChildren -replace '\{parentID\}', [uri]::EscapeDataString("$ParentId"))
             $resp = Invoke-DattoApi -Config $Config -Path $childPath -Query $q
             $stats.Calls++
@@ -5917,11 +5943,11 @@ function Invoke-SourceReview {
                 $isFolder = $false; try { $isFolder = [bool]$it.($f.itemFolder) } catch {}
                 if ($isFolder) {
                     $stats.Folders++
-                    Lzf941fbd0f9 -it $it -SpaceName $SpaceName -Rel $rel -IsFolder $true
-                    Lzb60ced94cb -ParentId $it.($f.itemId) -SpaceName $SpaceName -Prefix $rel
+                    Lz37e6d2235f -it $it -SpaceName $SpaceName -Rel $rel -IsFolder $true
+                    Lz06fe225d95 -ParentId $it.($f.itemId) -SpaceName $SpaceName -Prefix $rel
                 } else {
                     $stats.Files++
-                    Lzf941fbd0f9 -it $it -SpaceName $SpaceName -Rel $rel -IsFolder $false
+                    Lz37e6d2235f -it $it -SpaceName $SpaceName -Rel $rel -IsFolder $false
                 }
                 if ($script:GuiMode -and ((($stats.Folders + $stats.Files) % 250) -eq 0)) {
                     Write-Host "##STATUS##|Source review: $('{0:N0}' -f $stats.Folders) folders, $('{0:N0}' -f $stats.Files) files - $($stats.Pub) public, $($stats.Locked) locked, $($stats.NotReady) not cloud-ready"
@@ -5932,17 +5958,17 @@ function Invoke-SourceReview {
         foreach ($row in $mapRows) {
             $si++
             $sp = New-SpaceRef -Row $row -Config $Config
-            Lz5669edadca -Activity 'Source review' -Status $sp.Name -Current $si -Total $mapRows.Count | Out-Null
+            Lz305671cacc -Activity 'Source review' -Status $sp.Name -Current $si -Total $mapRows.Count | Out-Null
             if ($script:GuiMode) { Write-Host "##STATUS##|Source review: scanning folder $si of $($mapRows.Count) ('$($sp.Name)')" }
             $stats.Projects++
-            Lz4fc1f17a79 -Space $sp.Name -Path '' -Kind 'Project' -Pub $false -Link '' -By '' -Size 0 -ModUtc '' -Locked $false -LockName '' -LockEmail '' -LockSince '' -NotReady $false -ReadyReason ''
+            Lza8cd193737 -Space $sp.Name -Path '' -Kind 'Project' -Pub $false -Link '' -By '' -Size 0 -ModUtc '' -Locked $false -LockName '' -LockEmail '' -LockSince '' -NotReady $false -ReadyReason ''
             $startId = $sp.Id; $seedPrefix = ''
             if ($sp.SubPath) {
                 try { $startId = Resolve-DattoSubPath -Config $Config -Space $sp -SubPath $sp.SubPath }
                 catch { Write-MigrationLog WARN "  could not resolve subfolder '$($sp.SubPath)' in '$($sp.Name)'; skipping it."; continue }
                 if (-not $sp.ContentsOnly) { $seedPrefix = $sp.SubPath }
             }
-            Lzb60ced94cb -ParentId $startId -SpaceName $sp.Name -Prefix $seedPrefix
+            Lz06fe225d95 -ParentId $startId -SpaceName $sp.Name -Prefix $seedPrefix
         }
         try { Write-Progress -Activity 'Source review' -Completed } catch {}
     }
@@ -5963,7 +5989,7 @@ function Invoke-SourceReview {
     $brand = 'Liscaragh Migrate'
     if (((Test-ConfigProp $Config.run 'report')) -and ((Test-ConfigProp $Config.run.report 'brand')) -and $Config.run.report.brand) { $brand = "$($Config.run.report.brand)" }
     $now = Get-Date
-    $tv = Lza152ab30c8; $verSub = if ($tv) { " &middot; v$tv" } else { '' }
+    $tv = Lz45647fd8e5; $verSub = if ($tv) { " &middot; v$tv" } else { '' }
     $durS = [int]($finished - $started).TotalSeconds
     $dur = if ($durS -ge 60) { "{0}m {1}s" -f [int][math]::Floor($durS / 60), ($durS % 60) } else { "${durS}s" }
     $scanned = $stats.Folders + $stats.Files
@@ -5978,8 +6004,8 @@ function Invoke-SourceReview {
         if ($nNR) { $bits += "$nNR file(s) not yet in the cloud" }
         "<div class='banner bad'><b>$totalFindings item(s) to review before migrating.</b> Found $($bits -join ', '). See the sections below.</div>"
     }
-    function Lz8f60367b75 { param($v, $l, [bool]$hot) "<div class='tile$(if ($hot) { ' hot' })'><div class='v'>$v</div><div class='l'>$l</div></div>" }
-    $tiles = (Lz8f60367b75 $stats.Projects 'Folders in job' $false) + (Lz8f60367b75 ('{0:N0}' -f $stats.Folders) 'Subfolders scanned' $false) + (Lz8f60367b75 ('{0:N0}' -f $stats.Files) 'Files scanned' $false) + (Lz8f60367b75 $nPub 'Public links' ($nPub -gt 0)) + (Lz8f60367b75 $nLock 'Locked files' ($nLock -gt 0)) + (Lz8f60367b75 $nNR 'Not cloud-ready' ($nNR -gt 0)) + (Lz8f60367b75 $dur 'Scan time' $false)
+    function Lzf8bd0ec88e { param($v, $l, [bool]$hot) "<div class='tile$(if ($hot) { ' hot' })'><div class='v'>$v</div><div class='l'>$l</div></div>" }
+    $tiles = (Lzf8bd0ec88e $stats.Projects 'Folders in job' $false) + (Lzf8bd0ec88e ('{0:N0}' -f $stats.Folders) 'Subfolders scanned' $false) + (Lzf8bd0ec88e ('{0:N0}' -f $stats.Files) 'Files scanned' $false) + (Lzf8bd0ec88e $nPub 'Public links' ($nPub -gt 0)) + (Lzf8bd0ec88e $nLock 'Locked files' ($nLock -gt 0)) + (Lzf8bd0ec88e $nNR 'Not cloud-ready' ($nNR -gt 0)) + (Lzf8bd0ec88e $dur 'Scan time' $false)
     $plRows = ''
     foreach ($x in $publics) {
         $itemTxt = if ($x.Path) { $x.Path } else { '(the folder itself)' }
@@ -6083,7 +6109,7 @@ $suspectNote
 }
 function Invoke-ProvenancePack {
     param($Config, [string]$AuditPath = '', [switch]$NoStageLog, [scriptblock]$TsaTransport)
-    if (-not $NoStageLog) { Lz5716c7978d -Config $Config -Stage 'api-provenance' }
+    if (-not $NoStageLog) { Lz42ecc394a1 -Config $Config -Stage 'api-provenance' }
     if (-not $AuditPath) {
         $cand = Get-ChildItem (Join-Path $Config.run.reportRoot 'audit-*.csv') -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
         if ($cand) { $AuditPath = $cand.FullName }
@@ -6150,7 +6176,7 @@ function Invoke-ProvenancePack {
     $brand = 'Liscaragh Migrate'
     if (((Test-ConfigProp $Config.run 'report')) -and ((Test-ConfigProp $Config.run.report 'brand')) -and $Config.run.report.brand) { $brand = "$($Config.run.report.brand)" }
     $now = Get-Date
-    $tv = Lza152ab30c8; $verSub = if ($tv) { " &middot; v$tv" } else { '' }
+    $tv = Lz45647fd8e5; $verSub = if ($tv) { " &middot; v$tv" } else { '' }
     $spaces = @($rows | Select-Object -ExpandProperty Space -Unique).Count
     $tsBlock = switch ($tsaState) {
         'timestamped' { "<div class='banner ok'><b>Third-party timestamped.</b> The manifest hash was countersigned by an independent RFC 3161 Time Stamping Authority at <b>$(_enc $tsaTime)</b> ($(_enc $tsaUrl)). Signer: $(_enc $tsaSigner). Token file: <span class='pth'>$(_enc ([System.IO.Path]::GetFileName($tokenPath)))</span></div>" }
@@ -6206,8 +6232,8 @@ openssl ts -verify -digest $hashHex -in "$(_enc $(if ($tokenPath) { [System.IO.P
 }
 function Test-Api {
     param($Config)
-    Lz5716c7978d -Config $Config -Stage 'api-test'
-    Lz53d5cf954b -Config $Config
+    Lz42ecc394a1 -Config $Config -Stage 'api-test'
+    Lzdb130f4b19 -Config $Config
     Connect-Destination -Config $Config
     $spaces = @(Get-DattoSpaces -Config $Config)
     Write-MigrationLog OK "Datto returned $($spaces.Count) project(s)."
@@ -6387,7 +6413,7 @@ try {
         'Validate'    { Invoke-Validate -Config $cfg }
         'Drift'       { Invoke-DriftCheck -Config $cfg }
         'SizeCheck'   { Invoke-SizeCheck -Config $cfg -OnlySpace $OnlySpace }
-        'DestInventory' { Lza6ae2e3875 -Config $cfg -SpaceName $Spaces -ResultDir $ResultDir }
+        'DestInventory' { Lz6dcb0eec0c -Config $cfg -SpaceName $Spaces -ResultDir $ResultDir }
         'SourceReview' { Invoke-SourceReview -Config $cfg | Out-Null }
         'Provenance'  { Invoke-ProvenancePack -Config $cfg -AuditPath $AuditPath | Out-Null }
         'Report'      { Invoke-HtmlReport -Config $cfg -AuditPath $AuditPath | Out-Null }
@@ -6421,10 +6447,10 @@ finally {
 }
 
 # SIG # Begin signature block
-# MIIzXAYJKoZIhvcNAQcCoIIzTTCCM0kCAQExDzANBglghkgBZQMEAgEFADB5Bgor
+# MIIzXgYJKoZIhvcNAQcCoIIzTzCCM0sCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCC3HP8HEmV+7BIE
-# ryBPtytQhmUePyHnLTZ3K5tDHlYqSKCCG1swggXMMIIDtKADAgECAhBUmNLR1FsZ
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCB88tB1IRM1l+eR
+# b+NvzvqxgMxRCurYwrgOo+89EgXN26CCG1swggXMMIIDtKADAgECAhBUmNLR1FsZ
 # lUgTecgRwIeZMA0GCSqGSIb3DQEBDAUAMHcxCzAJBgNVBAYTAlVTMR4wHAYDVQQK
 # ExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xSDBGBgNVBAMTP01pY3Jvc29mdCBJZGVu
 # dGl0eSBWZXJpZmljYXRpb24gUm9vdCBDZXJ0aWZpY2F0ZSBBdXRob3JpdHkgMjAy
@@ -6570,129 +6596,130 @@ finally {
 # o2J83r7O3onQbDO9TyDStgaBNlHzMMQgl95nHBYMelLEHkUnVVVTUsgC0Huj09du
 # NfMaJ9ogxhPNThgq3i8w3DAGZ61AMeF0C1M+mU5eucj1Ijod5O2MMPeJQ3/vKBtq
 # GZg4eTtUHt/BPjN74SsJsyHqAdXVS5c+ItyKWg3Eforhox9k3WgtWTpgV4gkSiS4
-# +A09roSdOI4vrRw+p+fL4WrxSK5nMYIXVzCCF1MCAQEwcTBaMQswCQYDVQQGEwJV
+# +A09roSdOI4vrRw+p+fL4WrxSK5nMYIXWTCCF1UCAQEwcTBaMQswCQYDVQQGEwJV
 # UzEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMSswKQYDVQQDEyJNaWNy
 # b3NvZnQgSUQgVmVyaWZpZWQgQ1MgRU9DIENBIDA0AhMzAAgeA90uUKpQ3cI+AAAA
 # CB4DMA0GCWCGSAFlAwQCAQUAoIGEMBgGCisGAQQBgjcCAQwxCjAIoAKAAKECgAAw
 # GQYJKoZIhvcNAQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisG
-# AQQBgjcCARUwLwYJKoZIhvcNAQkEMSIEIHpwKCnfJiWmGPFCd/KUPzFDvNPjNuHI
-# xdZ/TqWYEL0YMA0GCSqGSIb3DQEBAQUABIIBgIF9Jt00gVMOvFCWbLPOhI7NIlLR
-# P0+lnq0Zv+OXhtUh7j9lj5IblN7ztYMYlu+IqnMmQM/N1Xs3h9E9N8qc87TQiPGP
-# NxzKEDCQbnVyt3r2qmpTVVS2rxxxH524zn6ojwbM6nRRwfhxNHbgCY6I1VJ91Ocn
-# eTUmXsWVRp0umwSAevjHETbDEG07h/zs9UJ4nOWJ09DM9qXcSXVG+jeQ0kApAa1R
-# HaN6nKoPaB4Lq3q9asZu9HJHzLdxKwW/RN35LbUF7jj1Zjas6GQr4JET77/zu4j0
-# lmFCV4jBOTHXm0zN6pWp4dMA+uzXIk8mYCrmoT0SEUi1H7Na7hZ96gDB+p0nFl/N
-# e+sKrIaK5U/Kjm94K4yBIfJxXwgwXweSYgGzp5No23UrvDeeUHihRwL+H8ud4rXz
-# AC+cCjnnwEiYsS4r5Tkfz7DCJ37jS1ySvOXqM44ffD4L2eDSKFz7CtJDkwg8rGNK
-# laJyxYUvze0Bpy5cAuTT2/+0SFzcZT32oqPLF6GCFLAwghSsBgorBgEEAYI3AwMB
-# MYIUnDCCFJgGCSqGSIb3DQEHAqCCFIkwghSFAgEDMQ8wDQYJYIZIAWUDBAIBBQAw
-# ggFoBgsqhkiG9w0BCRABBKCCAVcEggFTMIIBTwIBAQYKKwYBBAGEWQoDATAxMA0G
-# CWCGSAFlAwQCAQUABCCwgOYlv5LOLtJDnEFDn3b3P8Bl/09W/LjSOU5tO2+84wIG
-# ar+jETU5GBEyMDI2MTAxMjIxMjExMy4zWjAEgAIB9KCB6aSB5jCB4zELMAkGA1UE
-# BhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAc
-# BgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEtMCsGA1UECxMkTWljcm9zb2Z0
-# IElyZWxhbmQgT3BlcmF0aW9ucyBMaW1pdGVkMScwJQYDVQQLEx5uU2hpZWxkIFRT
-# UyBFU046N0IxQS0wNUUwLUQ5NDcxNTAzBgNVBAMTLE1pY3Jvc29mdCBQdWJsaWMg
-# UlNBIFRpbWUgU3RhbXBpbmcgQXV0aG9yaXR5oIIPKTCCB4IwggVqoAMCAQICEzMA
-# AAAF5c8P/2YuyYcAAAAAAAUwDQYJKoZIhvcNAQEMBQAwdzELMAkGA1UEBhMCVVMx
-# HjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjFIMEYGA1UEAxM/TWljcm9z
-# b2Z0IElkZW50aXR5IFZlcmlmaWNhdGlvbiBSb290IENlcnRpZmljYXRlIEF1dGhv
-# cml0eSAyMDIwMB4XDTIwMTExOTIwMzIzMVoXDTM1MTExOTIwNDIzMVowYTELMAkG
-# A1UEBhMCVVMxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEyMDAGA1UE
-# AxMpTWljcm9zb2Z0IFB1YmxpYyBSU0EgVGltZXN0YW1waW5nIENBIDIwMjAwggIi
-# MA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQCefOdSY/3gxZ8FfWO1BiKjHB7X
-# 55cz0RMFvWVGR3eRwV1wb3+yq0OXDEqhUhxqoNv6iYWKjkMcLhEFxvJAeNcLAyT+
-# XdM5i2CgGPGcb95WJLiw7HzLiBKrxmDj1EQB/mG5eEiRBEp7dDGzxKCnTYocDOcR
-# r9KxqHydajmEkzXHOeRGwU+7qt8Md5l4bVZrXAhK+WSk5CihNQsWbzT1nRliVDwu
-# nuLkX1hyIWXIArCfrKM3+RHh+Sq5RZ8aYyik2r8HxT+l2hmRllBvE2Wok6IEaAJa
-# nHr24qoqFM9WLeBUSudz+qL51HwDYyIDPSQ3SeHtKog0ZubDk4hELQSxnfVYXdTG
-# ncaBnB60QrEuazvcob9n4yR65pUNBCF5qeA4QwYnilBkfnmeAjRN3LVuLr0g0FXk
-# qfYdUmj1fFFhH8k8YBozrEaXnsSL3kdTD01X+4LfIWOuFzTzuoslBrBILfHNj8Rf
-# OxPgjuwNvE6YzauXi4orp4Sm6tF245DaFOSYbWFK5ZgG6cUY2/bUq3g3bQAqZt65
-# KcaewEJ3ZyNEobv35Nf6xN6FrA6jF9447+NHvCjeWLCQZ3M8lgeCcnnhTFtyQX3X
-# gCoc6IRXvFOcPVrr3D9RPHCMS6Ckg8wggTrtIVnY8yjbvGOUsAdZbeXUIQAWMs0d
-# 3cRDv09SvwVRd61evQIDAQABo4ICGzCCAhcwDgYDVR0PAQH/BAQDAgGGMBAGCSsG
-# AQQBgjcVAQQDAgEAMB0GA1UdDgQWBBRraSg6NS9IY0DPe9ivSek+2T3bITBUBgNV
-# HSAETTBLMEkGBFUdIAAwQTA/BggrBgEFBQcCARYzaHR0cDovL3d3dy5taWNyb3Nv
-# ZnQuY29tL3BraW9wcy9Eb2NzL1JlcG9zaXRvcnkuaHRtMBMGA1UdJQQMMAoGCCsG
-# AQUFBwMIMBkGCSsGAQQBgjcUAgQMHgoAUwB1AGIAQwBBMA8GA1UdEwEB/wQFMAMB
-# Af8wHwYDVR0jBBgwFoAUyH7SaoUqG8oZmAQHJ89QEE9oqKIwgYQGA1UdHwR9MHsw
-# eaB3oHWGc2h0dHA6Ly93d3cubWljcm9zb2Z0LmNvbS9wa2lvcHMvY3JsL01pY3Jv
-# c29mdCUyMElkZW50aXR5JTIwVmVyaWZpY2F0aW9uJTIwUm9vdCUyMENlcnRpZmlj
-# YXRlJTIwQXV0aG9yaXR5JTIwMjAyMC5jcmwwgZQGCCsGAQUFBwEBBIGHMIGEMIGB
-# BggrBgEFBQcwAoZ1aHR0cDovL3d3dy5taWNyb3NvZnQuY29tL3BraW9wcy9jZXJ0
-# cy9NaWNyb3NvZnQlMjBJZGVudGl0eSUyMFZlcmlmaWNhdGlvbiUyMFJvb3QlMjBD
-# ZXJ0aWZpY2F0ZSUyMEF1dGhvcml0eSUyMDIwMjAuY3J0MA0GCSqGSIb3DQEBDAUA
-# A4ICAQBfiHbHfm21WhV150x4aPpO4dhEmSUVpbixNDmv6TvuIHv1xIs174bNGO/i
-# lWMm+Jx5boAXrJxagRhHQtiFprSjMktTliL4sKZyt2i+SXncM23gRezzsoOiBhv1
-# 4YSd1Klnlkzvgs29XNjT+c8hIfPRe9rvVCMPiH7zPZcw5nNjthDQ+zD563I1nUJ6
-# y59TbXWsuyUsqw7wXZoGzZwijWT5oc6GvD3HDokJY401uhnj3ubBhbkR83RbfMvm
-# zdp3he2bvIUztSOuFzRqrLfEvsPkVHYnvH1wtYyrt5vShiKheGpXa2AWpsod4OJy
-# T4/y0dggWi8g/tgbhmQlZqDUf3UqUQsZaLdIu/XSjgoZqDjamzCPJtOLi2hBwL+K
-# sCh0Nbwc21f5xvPSwym0Ukr4o5sCcMUcSy6TEP7uMV8RX0eH/4JLEpGyae6Ki8JY
-# g5v4fsNGif1OXHJ2IWG+7zyjTDfkmQ1snFOTgyEX8qBpefQbF0fx6URrYiarjmBp
-# rwP6ZObwtZXJ23jK3Fg/9uqM3j0P01nzVygTppBabzxPAh/hHhhls6kwo3QLJ6No
-# 803jUsZcd4JQxiYHHc+Q/wAMcPUnYKv/q2O444LO1+n6j01z5mggCSlRwD9faBIy
-# SAcA9S8h22hIAcRQqIGEjolCK9F6nK9ZyX4lhthsGHumaABdWzCCB58wggWHoAMC
-# AQICEzMAAABZfNpx6Y1e9cAAAAAAAFkwDQYJKoZIhvcNAQEMBQAwYTELMAkGA1UE
-# BhMCVVMxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEyMDAGA1UEAxMp
-# TWljcm9zb2Z0IFB1YmxpYyBSU0EgVGltZXN0YW1waW5nIENBIDIwMjAwHhcNMjYw
-# MTA4MTg1OTAxWhcNMjcwMTA3MTg1OTAxWjCB4zELMAkGA1UEBhMCVVMxEzARBgNV
-# BAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jv
-# c29mdCBDb3Jwb3JhdGlvbjEtMCsGA1UECxMkTWljcm9zb2Z0IElyZWxhbmQgT3Bl
-# cmF0aW9ucyBMaW1pdGVkMScwJQYDVQQLEx5uU2hpZWxkIFRTUyBFU046N0IxQS0w
-# NUUwLUQ5NDcxNTAzBgNVBAMTLE1pY3Jvc29mdCBQdWJsaWMgUlNBIFRpbWUgU3Rh
-# bXBpbmcgQXV0aG9yaXR5MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA
-# pi7n/jR4Rf6FP7mMVrXjpuJ3d0Dguddie2+Q/cIbDgsYBEWGe8sxIn9W2y5vMNp4
-# WebvJvYpIzvRaYdCmt0JWqm9QfuXS4HiM3Du6sugBH2QocsTRWUyUNK0NLFQEjer
-# Cx2uO92a9XST73+eO4MSJKXMlN/sOjB3Urds7ht5HJoWFH5jy3KYQI6qU4B99isb
-# bBl1UznX5BIFJ748TKSvwLo6eepKKm4Xx9m8Jvr+G6TRmbpnCxqLFIcgBPYgQa9L
-# tzrcibyNXdrxHQrqLbKLDQ02WdNKnDL9l+/uLCwsHCF9uMFOf5c6XqY/MNdBDdX5
-# JE/3FdsYo6wFPHMaJ3tooAfDejgCGX1QZYsf2Q0/dVSiQToliSOV+m5QZnqBDKoN
-# 7B/EPhWhgiWim3gdnTFC+pqO4nH5yvwtH8hnnqAsubDIzN17n6+2MGiKWvL+BJnB
-# UbCCS+QiCko8FAcaxIHTLezOvtjvARvq/TJlqXVdS9aefPeKdNpJawIWss9XBWZf
-# Ledxjn93blWk6SG36br3sZY1u+w06EA4dFp+0T2P+GGSgzpGzIl8EueGoxwD/Bxq
-# 9/miPk17JFB0Zl4spyWz1ywpLewFTM+J3HHaKI0f0I9oOr9sskQ5dqxiiFcydGKe
-# 759STzWzxU7sNBIXp9+fmipIehXyV/UDHq76R1KFvwECAwEAAaOCAcswggHHMB0G
-# A1UdDgQWBBSPlucLXwPS+WdJGEI6I4MYa5c2djAfBgNVHSMEGDAWgBRraSg6NS9I
-# Y0DPe9ivSek+2T3bITBsBgNVHR8EZTBjMGGgX6BdhltodHRwOi8vd3d3Lm1pY3Jv
-# c29mdC5jb20vcGtpb3BzL2NybC9NaWNyb3NvZnQlMjBQdWJsaWMlMjBSU0ElMjBU
-# aW1lc3RhbXBpbmclMjBDQSUyMDIwMjAuY3JsMHkGCCsGAQUFBwEBBG0wazBpBggr
-# BgEFBQcwAoZdaHR0cDovL3d3dy5taWNyb3NvZnQuY29tL3BraW9wcy9jZXJ0cy9N
-# aWNyb3NvZnQlMjBQdWJsaWMlMjBSU0ElMjBUaW1lc3RhbXBpbmclMjBDQSUyMDIw
-# MjAuY3J0MAwGA1UdEwEB/wQCMAAwFgYDVR0lAQH/BAwwCgYIKwYBBQUHAwgwDgYD
-# VR0PAQH/BAQDAgeAMGYGA1UdIARfMF0wUQYMKwYBBAGCN0yDfQEBMEEwPwYIKwYB
-# BQUHAgEWM2h0dHA6Ly93d3cubWljcm9zb2Z0LmNvbS9wa2lvcHMvRG9jcy9SZXBv
-# c2l0b3J5Lmh0bTAIBgZngQwBBAIwDQYJKoZIhvcNAQEMBQADggIBAEQyHML9lyOk
-# b/NRETvPZinm+tTFSOwTldre3/ZEa8RLC9uayTdsseFIUBqOCjZdDzGgYM/exSEo
-# Is94gJJuRW/pXyxKnx8nwmizrKtrB/ZhWKzy1xX447tT1LokY9DOmY+dx/NBzid7
-# V+pnj4eIppsgMSgV111BPYSCST1/PEJj8RnnZq8nbt1J+sj8gObKf1XXQ7eJCmDY
-# X4L281OuTudWCgOgdr35DelivQgcadKa3mKuAZPjfrOjladc/wXEyGzAfVqLKJJm
-# JXOGivXQL0LnZw/cLz88SgwpRey0uOg87RMyR5b/UWvXzopcPjlBGAGjTEiaC1ZN
-# 3NYWeUP6nv6IMEi5Ks1xFcNFi6r9phloOFZIjRJh08hZWHle9e5YDfVryhDRI76g
-# 9rc2TzSTTzrjCKLInUqxtKdpp5+D2+yl6CGuljyWMLDF8JS3HkdBE2AAk4jwgoAI
-# rh3TXgyTSGVE7SVBVEd6CoiDb0rpeqRzfrRbZkkZRyy2UqiSRWPooAeMbKstE/N6
-# lh+JlQmriBfLFum8pvVcnYU3brzZpSg1ej1HJErVyHR/rqTr7KPzyTO+4Lv68la0
-# 0Oz9SkgzoeGbSRTrglQnswwRBwBzuSl+3sabth5Er6gqCpSBhcJ+bNtfyclclmc9
-# rwANZWwiqy40DEIjQJleRQuh+qjkF7rPMYID1DCCA9ACAQEweDBhMQswCQYDVQQG
-# EwJVUzEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMTIwMAYDVQQDEylN
-# aWNyb3NvZnQgUHVibGljIFJTQSBUaW1lc3RhbXBpbmcgQ0EgMjAyMAITMwAAAFl8
-# 2nHpjV71wAAAAAAAWTANBglghkgBZQMEAgEFAKCCAS0wGgYJKoZIhvcNAQkDMQ0G
-# CyqGSIb3DQEJEAEEMC8GCSqGSIb3DQEJBDEiBCBX23Ca5CzkrEW0+iSGlKrM7C3w
-# bHq1Q2tQBc8+t0cYUDCB3QYLKoZIhvcNAQkQAi8xgc0wgcowgccwgaAEIMtFurHb
-# humxxcQn4eOP3GtxRXDtHw7LIx9IHZgYrf68MHwwZaRjMGExCzAJBgNVBAYTAlVT
-# MR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xMjAwBgNVBAMTKU1pY3Jv
-# c29mdCBQdWJsaWMgUlNBIFRpbWVzdGFtcGluZyBDQSAyMDIwAhMzAAAAWXzacemN
-# XvXAAAAAAABZMCIEICUWqyp04ppiTmX3OXieYIjCSC5QjPkKwjI9HzxsYmXrMA0G
-# CSqGSIb3DQEBCwUABIICADW57ECzXu01UN0LeH9GIF5N6wlf5J+XXyT2Lx9Mfszw
-# PP9/rlY7P6mXFiYgpgCv/suk4E4BiRJSOiwz9LT6boShZYrfWkyT5HPFKLgGAbTV
-# kKZIZPmjt7npGkWggQCml3So8GizZl3OulJQ6bUYgRuz+o5Epae/n4CeWaDHKPwK
-# FkRikynxNLdYo7DYHCQY4LHxgOS/9ZbzXdUF3rbI90xTHkX6alhCE2lPCR5V00fH
-# 5A3Xz0fI90wKi1gQHZZ5EOG/ylhwomqhNZLr70T9qcEv3wrVSI5rVG0UX7Y8H6nM
-# Rv/CRmLuqe1ZYzJxk1MqVmDCop1GtiDGSGUlaUr//lSzfVJJnlhteXulfhPS0YPg
-# 58niLlek3WPAUoEKJR2hBbnJ7bcGaFkx0LRP+tXMd5GFoa+pWH5hnw0fa12Lf+sp
-# mMf1zVbj65aevE67zqskZt9DMcGvxwYBGYMMW3aXuTZ0L0q4W4hVqnUHQUbM/XqX
-# 0aqxAieqYOZOSG6Lv6L/CjjCpMTHGqIpOfqIao1gJCzYPF4faPSlTJH43Y4T2ofr
-# amn86zh4E0RGa8N3d/AE9EAGDYXc9TsDfCkknB5D0rFJIihKi2mrts4AbEJP1Bgo
-# pRk6BhOv08GO/magrWgP0tNkkLZBp/Z9Li+0MhxjjC8ve5k2ikgHICx5VdSy1eL9
+# AQQBgjcCARUwLwYJKoZIhvcNAQkEMSIEIEj0D1zs12emRBaoh4/1jPPDbalxjmWu
+# J0n5WTbYIHkmMA0GCSqGSIb3DQEBAQUABIIBgDrpvz1jv9P59sdJls8teZBr/C+l
+# viubq4Hr7s91EoLuEuvuek1+4imA0MmqtKYoPe7ZpiPAivgoQOjMssLWoXJaBArS
+# VJXFQawO5TY0XmNUPD3cDiQ36mnHdjfhrFOoZoeQWov7yVJ8lQ6b2lY4GBKW/e/w
+# wt1F4nmACOe7F9wYW5alWUlsQk+mZQECkQ9UCNIQRr4rfh7iyY9rPYgOM9yboUhz
+# ZL68nnrzXXKmkB3qnsYKcEcz7Q9i5pBifPOj1zt7GdRtRbMDfvMRwgz7qDQEZZ9t
+# VaZD7o8JLhU0uqhijmmNw+6zh2qLPOYQ0Zz6euRWKZEVHAeaFAbm7qqfInf5XM+i
+# sbOH7LvBSbggL49hdYigUQfChiupyk/aFgOUObAb84NR7in50I3a7QjBbavvSjfQ
+# IKVxiHy4LwGtAAqV63xAXp4iaZuE3dEI8xefECyK0UxaA6uqJ+E0HLCWW4S4njG6
+# eVGkQSKpcI42yeSgT5AHhotQ4jell8UU/OeUxqGCFLIwghSuBgorBgEEAYI3AwMB
+# MYIUnjCCFJoGCSqGSIb3DQEHAqCCFIswghSHAgEDMQ8wDQYJYIZIAWUDBAIBBQAw
+# ggFqBgsqhkiG9w0BCRABBKCCAVkEggFVMIIBUQIBAQYKKwYBBAGEWQoDATAxMA0G
+# CWCGSAFlAwQCAQUABCAgKdErjLXUW5GIaSNs/JaXLHQ6BHsdANr8MytCTwRsDAIG
+# ar+jEZKSGBMyMDI2MTAxMzAxMDYxNS44NDZaMASAAgH0oIHppIHmMIHjMQswCQYD
+# VQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEe
+# MBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMS0wKwYDVQQLEyRNaWNyb3Nv
+# ZnQgSXJlbGFuZCBPcGVyYXRpb25zIExpbWl0ZWQxJzAlBgNVBAsTHm5TaGllbGQg
+# VFNTIEVTTjo3QjFBLTA1RTAtRDk0NzE1MDMGA1UEAxMsTWljcm9zb2Z0IFB1Ymxp
+# YyBSU0EgVGltZSBTdGFtcGluZyBBdXRob3JpdHmggg8pMIIHgjCCBWqgAwIBAgIT
+# MwAAAAXlzw//Zi7JhwAAAAAABTANBgkqhkiG9w0BAQwFADB3MQswCQYDVQQGEwJV
+# UzEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMUgwRgYDVQQDEz9NaWNy
+# b3NvZnQgSWRlbnRpdHkgVmVyaWZpY2F0aW9uIFJvb3QgQ2VydGlmaWNhdGUgQXV0
+# aG9yaXR5IDIwMjAwHhcNMjAxMTE5MjAzMjMxWhcNMzUxMTE5MjA0MjMxWjBhMQsw
+# CQYDVQQGEwJVUzEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMTIwMAYD
+# VQQDEylNaWNyb3NvZnQgUHVibGljIFJTQSBUaW1lc3RhbXBpbmcgQ0EgMjAyMDCC
+# AiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAJ5851Jj/eDFnwV9Y7UGIqMc
+# HtfnlzPREwW9ZUZHd5HBXXBvf7KrQ5cMSqFSHGqg2/qJhYqOQxwuEQXG8kB41wsD
+# JP5d0zmLYKAY8Zxv3lYkuLDsfMuIEqvGYOPURAH+Ybl4SJEESnt0MbPEoKdNihwM
+# 5xGv0rGofJ1qOYSTNcc55EbBT7uq3wx3mXhtVmtcCEr5ZKTkKKE1CxZvNPWdGWJU
+# PC6e4uRfWHIhZcgCsJ+sozf5EeH5KrlFnxpjKKTavwfFP6XaGZGWUG8TZaiTogRo
+# AlqcevbiqioUz1Yt4FRK53P6ovnUfANjIgM9JDdJ4e0qiDRm5sOTiEQtBLGd9Vhd
+# 1MadxoGcHrRCsS5rO9yhv2fjJHrmlQ0EIXmp4DhDBieKUGR+eZ4CNE3ctW4uvSDQ
+# VeSp9h1SaPV8UWEfyTxgGjOsRpeexIveR1MPTVf7gt8hY64XNPO6iyUGsEgt8c2P
+# xF87E+CO7A28TpjNq5eLiiunhKbq0XbjkNoU5JhtYUrlmAbpxRjb9tSreDdtACpm
+# 3rkpxp7AQndnI0Shu/fk1/rE3oWsDqMX3jjv40e8KN5YsJBnczyWB4JyeeFMW3JB
+# fdeAKhzohFe8U5w9WuvcP1E8cIxLoKSDzCCBOu0hWdjzKNu8Y5SwB1lt5dQhABYy
+# zR3dxEO/T1K/BVF3rV69AgMBAAGjggIbMIICFzAOBgNVHQ8BAf8EBAMCAYYwEAYJ
+# KwYBBAGCNxUBBAMCAQAwHQYDVR0OBBYEFGtpKDo1L0hjQM972K9J6T7ZPdshMFQG
+# A1UdIARNMEswSQYEVR0gADBBMD8GCCsGAQUFBwIBFjNodHRwOi8vd3d3Lm1pY3Jv
+# c29mdC5jb20vcGtpb3BzL0RvY3MvUmVwb3NpdG9yeS5odG0wEwYDVR0lBAwwCgYI
+# KwYBBQUHAwgwGQYJKwYBBAGCNxQCBAweCgBTAHUAYgBDAEEwDwYDVR0TAQH/BAUw
+# AwEB/zAfBgNVHSMEGDAWgBTIftJqhSobyhmYBAcnz1AQT2ioojCBhAYDVR0fBH0w
+# ezB5oHegdYZzaHR0cDovL3d3dy5taWNyb3NvZnQuY29tL3BraW9wcy9jcmwvTWlj
+# cm9zb2Z0JTIwSWRlbnRpdHklMjBWZXJpZmljYXRpb24lMjBSb290JTIwQ2VydGlm
+# aWNhdGUlMjBBdXRob3JpdHklMjAyMDIwLmNybDCBlAYIKwYBBQUHAQEEgYcwgYQw
+# gYEGCCsGAQUFBzAChnVodHRwOi8vd3d3Lm1pY3Jvc29mdC5jb20vcGtpb3BzL2Nl
+# cnRzL01pY3Jvc29mdCUyMElkZW50aXR5JTIwVmVyaWZpY2F0aW9uJTIwUm9vdCUy
+# MENlcnRpZmljYXRlJTIwQXV0aG9yaXR5JTIwMjAyMC5jcnQwDQYJKoZIhvcNAQEM
+# BQADggIBAF+Idsd+bbVaFXXnTHho+k7h2ESZJRWluLE0Oa/pO+4ge/XEizXvhs0Y
+# 7+KVYyb4nHlugBesnFqBGEdC2IWmtKMyS1OWIviwpnK3aL5JedwzbeBF7POyg6IG
+# G/XhhJ3UqWeWTO+Czb1c2NP5zyEh89F72u9UIw+IfvM9lzDmc2O2END7MPnrcjWd
+# QnrLn1Ntday7JSyrDvBdmgbNnCKNZPmhzoa8PccOiQljjTW6GePe5sGFuRHzdFt8
+# y+bN2neF7Zu8hTO1I64XNGqst8S+w+RUdie8fXC1jKu3m9KGIqF4aldrYBamyh3g
+# 4nJPj/LR2CBaLyD+2BuGZCVmoNR/dSpRCxlot0i79dKOChmoONqbMI8m04uLaEHA
+# v4qwKHQ1vBzbV/nG89LDKbRSSvijmwJwxRxLLpMQ/u4xXxFfR4f/gksSkbJp7oqL
+# wliDm/h+w0aJ/U5ccnYhYb7vPKNMN+SZDWycU5ODIRfyoGl59BsXR/HpRGtiJquO
+# YGmvA/pk5vC1lcnbeMrcWD/26ozePQ/TWfNXKBOmkFpvPE8CH+EeGGWzqTCjdAsn
+# o2jzTeNSxlx3glDGJgcdz5D/AAxw9Sdgq/+rY7jjgs7X6fqPTXPmaCAJKVHAP19o
+# EjJIBwD1LyHbaEgBxFCogYSOiUIr0Xqcr1nJfiWG2GwYe6ZoAF1bMIIHnzCCBYeg
+# AwIBAgITMwAAAFl82nHpjV71wAAAAAAAWTANBgkqhkiG9w0BAQwFADBhMQswCQYD
+# VQQGEwJVUzEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMTIwMAYDVQQD
+# EylNaWNyb3NvZnQgUHVibGljIFJTQSBUaW1lc3RhbXBpbmcgQ0EgMjAyMDAeFw0y
+# NjAxMDgxODU5MDFaFw0yNzAxMDcxODU5MDFaMIHjMQswCQYDVQQGEwJVUzETMBEG
+# A1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWlj
+# cm9zb2Z0IENvcnBvcmF0aW9uMS0wKwYDVQQLEyRNaWNyb3NvZnQgSXJlbGFuZCBP
+# cGVyYXRpb25zIExpbWl0ZWQxJzAlBgNVBAsTHm5TaGllbGQgVFNTIEVTTjo3QjFB
+# LTA1RTAtRDk0NzE1MDMGA1UEAxMsTWljcm9zb2Z0IFB1YmxpYyBSU0EgVGltZSBT
+# dGFtcGluZyBBdXRob3JpdHkwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoIC
+# AQCmLuf+NHhF/oU/uYxWteOm4nd3QOC512J7b5D9whsOCxgERYZ7yzEif1bbLm8w
+# 2nhZ5u8m9ikjO9Fph0Ka3Qlaqb1B+5dLgeIzcO7qy6AEfZChyxNFZTJQ0rQ0sVAS
+# N6sLHa473Zr1dJPvf547gxIkpcyU3+w6MHdSt2zuG3kcmhYUfmPLcphAjqpTgH32
+# KxtsGXVTOdfkEgUnvjxMpK/Aujp56koqbhfH2bwm+v4bpNGZumcLGosUhyAE9iBB
+# r0u3OtyJvI1d2vEdCuotsosNDTZZ00qcMv2X7+4sLCwcIX24wU5/lzpepj8w10EN
+# 1fkkT/cV2xijrAU8cxone2igB8N6OAIZfVBlix/ZDT91VKJBOiWJI5X6blBmeoEM
+# qg3sH8Q+FaGCJaKbeB2dMUL6mo7icfnK/C0fyGeeoCy5sMjM3Xufr7YwaIpa8v4E
+# mcFRsIJL5CIKSjwUBxrEgdMt7M6+2O8BG+r9MmWpdV1L1p5894p02klrAhayz1cF
+# Zl8t53GOf3duVaTpIbfpuvexljW77DToQDh0Wn7RPY/4YZKDOkbMiXwS54ajHAP8
+# HGr3+aI+TXskUHRmXiynJbPXLCkt7AVMz4nccdoojR/Qj2g6v2yyRDl2rGKIVzJ0
+# Yp7vn1JPNbPFTuw0Ehen35+aKkh6FfJX9QMervpHUoW/AQIDAQABo4IByzCCAccw
+# HQYDVR0OBBYEFI+W5wtfA9L5Z0kYQjojgxhrlzZ2MB8GA1UdIwQYMBaAFGtpKDo1
+# L0hjQM972K9J6T7ZPdshMGwGA1UdHwRlMGMwYaBfoF2GW2h0dHA6Ly93d3cubWlj
+# cm9zb2Z0LmNvbS9wa2lvcHMvY3JsL01pY3Jvc29mdCUyMFB1YmxpYyUyMFJTQSUy
+# MFRpbWVzdGFtcGluZyUyMENBJTIwMjAyMC5jcmwweQYIKwYBBQUHAQEEbTBrMGkG
+# CCsGAQUFBzAChl1odHRwOi8vd3d3Lm1pY3Jvc29mdC5jb20vcGtpb3BzL2NlcnRz
+# L01pY3Jvc29mdCUyMFB1YmxpYyUyMFJTQSUyMFRpbWVzdGFtcGluZyUyMENBJTIw
+# MjAyMC5jcnQwDAYDVR0TAQH/BAIwADAWBgNVHSUBAf8EDDAKBggrBgEFBQcDCDAO
+# BgNVHQ8BAf8EBAMCB4AwZgYDVR0gBF8wXTBRBgwrBgEEAYI3TIN9AQEwQTA/Bggr
+# BgEFBQcCARYzaHR0cDovL3d3dy5taWNyb3NvZnQuY29tL3BraW9wcy9Eb2NzL1Jl
+# cG9zaXRvcnkuaHRtMAgGBmeBDAEEAjANBgkqhkiG9w0BAQwFAAOCAgEARDIcwv2X
+# I6Rv81ERO89mKeb61MVI7BOV2t7f9kRrxEsL25rJN2yx4UhQGo4KNl0PMaBgz97F
+# ISgiz3iAkm5Fb+lfLEqfHyfCaLOsq2sH9mFYrPLXFfjju1PUuiRj0M6Zj53H80HO
+# J3tX6mePh4immyAxKBXXXUE9hIJJPX88QmPxGedmrydu3Un6yPyA5sp/VddDt4kK
+# YNhfgvbzU65O51YKA6B2vfkN6WK9CBxp0preYq4Bk+N+s6OVp1z/BcTIbMB9Woso
+# kmYlc4aK9dAvQudnD9wvPzxKDClF7LS46DztEzJHlv9Ra9fOilw+OUEYAaNMSJoL
+# Vk3c1hZ5Q/qe/ogwSLkqzXEVw0WLqv2mGWg4VkiNEmHTyFlYeV717lgN9WvKENEj
+# vqD2tzZPNJNPOuMIosidSrG0p2mnn4Pb7KXoIa6WPJYwsMXwlLceR0ETYACTiPCC
+# gAiuHdNeDJNIZUTtJUFUR3oKiINvSul6pHN+tFtmSRlHLLZSqJJFY+igB4xsqy0T
+# 83qWH4mVCauIF8sW6bym9VydhTduvNmlKDV6PUckStXIdH+upOvso/PJM77gu/ry
+# VrTQ7P1KSDOh4ZtJFOuCVCezDBEHAHO5KX7expu2HkSvqCoKlIGFwn5s21/JyVyW
+# Zz2vAA1lbCKrLjQMQiNAmV5FC6H6qOQXus8xggPUMIID0AIBATB4MGExCzAJBgNV
+# BAYTAlVTMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xMjAwBgNVBAMT
+# KU1pY3Jvc29mdCBQdWJsaWMgUlNBIFRpbWVzdGFtcGluZyBDQSAyMDIwAhMzAAAA
+# WXzacemNXvXAAAAAAABZMA0GCWCGSAFlAwQCAQUAoIIBLTAaBgkqhkiG9w0BCQMx
+# DQYLKoZIhvcNAQkQAQQwLwYJKoZIhvcNAQkEMSIEILZ2WrQ7UvicQdEYWwIC7OJU
+# Ggi79MOLS2wzh3bCgoH/MIHdBgsqhkiG9w0BCRACLzGBzTCByjCBxzCBoAQgy0W6
+# sduG6bHFxCfh44/ca3FFcO0fDssjH0gdmBit/rwwfDBlpGMwYTELMAkGA1UEBhMC
+# VVMxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEyMDAGA1UEAxMpTWlj
+# cm9zb2Z0IFB1YmxpYyBSU0EgVGltZXN0YW1waW5nIENBIDIwMjACEzMAAABZfNpx
+# 6Y1e9cAAAAAAAFkwIgQgBcSjL+O0V3zR1q7ksk5uhSvrEQDY/0bzrdxQUnMPhPgw
+# DQYJKoZIhvcNAQELBQAEggIAhGdpl5jO4+aYubVRfjKuo9hX+kbz1f9rAWYAvAtD
+# 3AdNDJbeI4HCvCyCqzG97V8uS6oSVbjegGm8+Yuae/mH+8K6loQcNNfLrJd06a3Y
+# iwkK27E2CuK25gP6gJat4VJkkCRcKYB8jW7UKkq+HXJkGmFq3q89aXIf6wr2QemF
+# 0eP8fOH4FWXzCt2WVO+e3pIImT2QYNakV3Tw4OGuPcOTe8/JS7IRjnCiLc6r97bM
+# CKMw8tYJRVtmo1BQEK9R6BBm6UIa8lkEjFFCFtGL+eiJBqx7Eo/B87rl3wxlneVJ
+# 48gvN4vEXHT1ormNh04PXVHePk3jKYnClBvOtD5wU9tF4p4Hb06Pq6Jjf7fdBi6k
+# hX1uNihwg/iRzF0bqPry15atiRC4qnvo19GNbnXp+Il4RdOeT0URy8pejAYrCKeT
+# Jggnc7HhonNbXeHdKQF5A92kGXQl3YvhcNxciSTJANdgtg/+Inu0heEr2FRFiYpJ
+# 0RsVhEtd3gCJ3WIM71V6kZ5tZXqPxyXuMYNo0BLP5V+GMkm864CLI7K9UNwPxUbq
+# FToskfd1lpj33gk+hHkKNjOqI1Gj1yevVfpoaiLizYc3ieXuJJseFP2UJ+LMM9fB
+# fKPsTMBxoeiPAcSichLsjPkKtixvWibSHwsq6vuKaDPpPlxzqgoRKF42fmLeucrM
+# JBs=
 # SIG # End signature block
